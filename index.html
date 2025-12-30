@@ -79,7 +79,6 @@ body {
         <option value="350" selected>普通</option>
         <option value="180">困难</option>
       </select>
-      <button id="toggleSoundBtn">音效</button>
       <button id="startBtn">开始</button>
       <button id="pauseBtn">暂停</button>
     </div>
@@ -95,10 +94,6 @@ body {
   <button id="downBtn">⬇️</button>
 </div>
 
-<audio id="bgm" loop src="https://freepd.com/music/Donuts_Ondependent_Loop.mp3" autoplay></audio>
-<audio id="moveSfx" src="https://freepd.com/sound/effects/tetris_move.wav"></audio>
-<audio id="lineSfx" src="https://freepd.com/sound/effects/tetris_clear.wav"></audio>
-
 <script>
 // Canvas自适应
 const canvas=document.getElementById('gameCanvas');
@@ -107,20 +102,13 @@ let COLS=10, ROWS=20;
 let BLOCK;
 function resizeCanvas(){
   const areaHeight = document.getElementById('gameArea').clientHeight;
-  const areaWidth = document.getElementById('gameArea').clientWidth - 130; // 左控件宽度
+  const areaWidth = document.getElementById('gameArea').clientWidth - 130;
   BLOCK=Math.floor(Math.min(areaWidth/COLS, areaHeight/ROWS));
   canvas.width=COLS*BLOCK;
   canvas.height=ROWS*BLOCK;
   draw();
 }
 window.addEventListener('resize',resizeCanvas);
-
-// 音效
-let soundOn=false;
-const bgm=document.getElementById('bgm');
-const moveSfx=document.getElementById('moveSfx');
-const lineSfx=document.getElementById('lineSfx');
-function playSound(audio){if(soundOn) audio.play();}
 
 // 游戏逻辑
 const shapes=[
@@ -133,15 +121,15 @@ let board,current,nextPiece,score,dropInterval,paused=false,speed=parseInt(docum
 // 初始化游戏
 function initGame(){
   board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
-  score=0; document.getElementById('score')?.innerText=score;
+  score=0;
   current=randomPiece();
   nextPiece=randomPiece();
   clearInterval(dropInterval);
   dropInterval=setInterval(gameLoop,speed);
   paused=false;
-  if(bgm) bgm.play();
   resizeCanvas();
   updateLeaderboard();
+  draw();
 }
 
 function randomPiece(){return {shape:shapes[Math.floor(Math.random()*shapes.length)],color:colors[Math.floor(Math.random()*colors.length)],x:Math.floor(COLS/2)-1,y:0};}
@@ -164,24 +152,25 @@ function collide(dx=0,dy=0,shape=null){
 
 function rotatePiece(){
   const r=current.shape[0].map((_,i)=>current.shape.map(row=>row[i]).reverse());
-  if(!collide(0,0,r)){current.shape=r;playSound(moveSfx);}
+  if(!collide(0,0,r)){current.shape=r;}
 }
 
-function movePiece(dx){if(!collide(dx,0)){current.x+=dx;playSound(moveSfx);}}
+function movePiece(dx){if(!collide(dx,0)){current.x+=dx;}}
 
 function drop(){if(!paused){if(!collide(0,1)){current.y++;}else{merge();clearLines();current=nextPiece;nextPiece=randomPiece();if(collide()) gameOver();}draw();}}
 
 function merge(){current.shape.forEach((r,i)=>r.forEach((c,j)=>{if(c&&current.y+i>=0) board[current.y+i][current.x+j]=current.color;}));}
 
 function clearLines(){
-  let cleared=0;
   for(let y=ROWS-1;y>=0;y--){
-    if(board[y].every(v=>v)){board.splice(y,1);board.unshift(Array(COLS).fill(0));cleared++;playSound(lineSfx);y++;}
+    if(board[y].every(v=>v)){board.splice(y,1);board.unshift(Array(COLS).fill(0));y++;}
   }
-  score+=cleared*10;
+  scoreDisplay();
 }
 
 function gameOver(){clearInterval(dropInterval);alert("游戏结束! 分数: "+score);saveScore(score);updateLeaderboard();}
+
+function scoreDisplay(){document.getElementById('score')?.innerText=score;}
 
 function saveScore(s){
   let arr=JSON.parse(localStorage.getItem('tetrisScores')||'[]'); arr.push(s); arr.sort((a,b)=>b-a); if(arr.length>5) arr.length=5;
@@ -196,7 +185,6 @@ function updateLeaderboard(){
 // 控件事件
 document.getElementById('startBtn').onclick=()=>{paused=false; initGame();};
 document.getElementById('pauseBtn').onclick=()=>{paused=!paused;};
-document.getElementById('toggleSoundBtn').onclick=()=>{soundOn=!soundOn;};
 document.getElementById('difficulty').onchange=(e)=>{speed=parseInt(e.target.value); if(dropInterval){clearInterval(dropInterval); dropInterval=setInterval(gameLoop,speed);}};
 
 // 键盘控制
@@ -221,7 +209,7 @@ canvas.addEventListener('touchend',e=>{
 // 游戏循环
 function gameLoop(){drop();}
 
-// 初始化
+// 初始化Canvas自适应
 resizeCanvas();
 updateLeaderboard();
 </script>
