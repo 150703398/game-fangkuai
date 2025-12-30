@@ -13,12 +13,6 @@ body {
   flex-direction:column;
   height:100vh;
 }
-#scoreBoard {
-  padding:5px 10px;
-  font-size:16px;
-  text-align:center;
-}
-#scoreBoard ol {padding-left:20px; margin:5px 0;}
 #gameArea {
   display:flex;
   flex:1;
@@ -26,7 +20,21 @@ body {
   gap:10px;
   box-sizing:border-box;
 }
-#leftControls, #rightControls {
+#leftControlsWrapper {
+  display:flex;
+  flex-direction:column;
+  width:120px;
+}
+#leaderboardWrapper {
+  flex:1;
+  overflow-y:auto;
+}
+#leaderboardWrapper ol {
+  padding-left:15px;
+  margin:5px 0;
+  font-size:14px;
+}
+#leftControls {
   display:flex;
   flex-direction:column;
   gap:5px;
@@ -38,9 +46,6 @@ body {
   cursor:pointer;
   background:#ffb347; color:#000; border:none; border-radius:5px;
   box-shadow:1px 1px 3px rgba(0,0,0,0.4);
-}
-#rightControls {
-  width:100px;
 }
 #gameCanvas {
   background:#fff;
@@ -62,28 +67,25 @@ body {
 </head>
 <body>
 
-<div id="scoreBoard">
-  <strong>排行榜</strong>
-  <ol id="leaderboard"></ol>
-</div>
-
 <div id="gameArea">
-  <div id="leftControls">
-    <select id="difficulty">
-      <option value="600">简单</option>
-      <option value="350" selected>普通</option>
-      <option value="180">困难</option>
-    </select>
-    <button id="toggleSoundBtn">音效</button>
-    <button id="startBtn">开始</button>
-    <button id="pauseBtn">暂停</button>
+  <div id="leftControlsWrapper">
+    <div id="leaderboardWrapper">
+      <strong>排行榜</strong>
+      <ol id="leaderboard"></ol>
+    </div>
+    <div id="leftControls">
+      <select id="difficulty">
+        <option value="600">简单</option>
+        <option value="350" selected>普通</option>
+        <option value="180">困难</option>
+      </select>
+      <button id="toggleSoundBtn">音效</button>
+      <button id="startBtn">开始</button>
+      <button id="pauseBtn">暂停</button>
+    </div>
   </div>
 
   <canvas id="gameCanvas"></canvas>
-
-  <div id="rightControls">
-    <!-- 排行榜已经在顶部显示 -->
-  </div>
 </div>
 
 <div id="touchControls">
@@ -105,7 +107,7 @@ let COLS=10, ROWS=20;
 let BLOCK;
 function resizeCanvas(){
   const areaHeight = document.getElementById('gameArea').clientHeight;
-  const areaWidth = document.getElementById('gameArea').clientWidth - 120; // 左控件宽度
+  const areaWidth = document.getElementById('gameArea').clientWidth - 130; // 左控件宽度
   BLOCK=Math.floor(Math.min(areaWidth/COLS, areaHeight/ROWS));
   canvas.width=COLS*BLOCK;
   canvas.height=ROWS*BLOCK;
@@ -131,7 +133,7 @@ let board,current,nextPiece,score,dropInterval,paused=false,speed=parseInt(docum
 // 初始化游戏
 function initGame(){
   board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
-  score=0; document.getElementById('score').innerText=score;
+  score=0; document.getElementById('score')?.innerText=score;
   current=randomPiece();
   nextPiece=randomPiece();
   clearInterval(dropInterval);
@@ -176,7 +178,7 @@ function clearLines(){
   for(let y=ROWS-1;y>=0;y--){
     if(board[y].every(v=>v)){board.splice(y,1);board.unshift(Array(COLS).fill(0));cleared++;playSound(lineSfx);y++;}
   }
-  score+=cleared*10; document.getElementById('score').innerText=score;
+  score+=cleared*10;
 }
 
 function gameOver(){clearInterval(dropInterval);alert("游戏结束! 分数: "+score);saveScore(score);updateLeaderboard();}
@@ -221,6 +223,7 @@ function gameLoop(){drop();}
 
 // 初始化
 resizeCanvas();
+updateLeaderboard();
 </script>
 </body>
 </html>
