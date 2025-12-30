@@ -58,12 +58,12 @@ let board=[], current=null, nextPiece=null, dropInterval=null, speed=parseInt(do
 const shapes=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[1,1,0],[0,1,1]],[[0,1,1],[1,1,0]]];
 const colors=['#ff0000','#ff7700','#ffff00','#77ff00','#00ff77','#00ffff','#7700ff'];
 
-// Canvas 自适应 PC/手机
+// Canvas 自适应 PC/手机，并缩小方块
 function resizeCanvas(){
   const wrapper = document.getElementById('canvasWrapper');
   const w = wrapper.clientWidth;
   const h = wrapper.clientHeight;
-  BLOCK = Math.floor(Math.min(w/COLS, h/ROWS));
+  BLOCK = Math.floor(Math.min(w/COLS, h/ROWS) * 0.8); // 缩小系数0.8，使方块更小
   canvas.width = COLS * BLOCK;
   canvas.height = ROWS * BLOCK;
   draw();
