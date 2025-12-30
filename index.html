@@ -2,276 +2,249 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>俄罗斯方块 Ultimate</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>可商用 网页俄罗斯方块</title>
 <style>
-body{
-  margin:0;
-  background:#020617;
-  color:#e5e7eb;
-  font-family:system-ui;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh;
-}
-.app{
-  max-width:360px;
-  width:100%;
-  background:#020617;
-  border-radius:16px;
-  padding:14px;
-  box-shadow:0 20px 50px rgba(0,0,0,.6);
-}
-canvas{
-  width:100%;
-  background:#000;
-  border-radius:8px;
-}
-.row{
-  display:flex;
-  justify-content:space-between;
-  margin:8px 0;
-  font-size:14px;
-}
-.controls{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-  margin-top:10px;
-}
-.btn{
-  padding:10px;
-  font-size:16px;
-  font-weight:bold;
-  border:none;
-  border-radius:10px;
-  background:#0ea5e9;
-  color:#020617;
-}
-.btn.alt{background:#22d3ee}
-.btn.warn{background:#facc15}
-.btn.danger{background:#fb7185}
-.btn:active{transform:scale(.95)}
-select{
-  width:100%;
-  padding:8px;
-  border-radius:8px;
-}
-.rank{
-  font-size:12px;
-  margin-top:8px;
-  background:#020617;
-  padding:8px;
-  border-radius:8px;
-}
-.rank div{opacity:.85}
+  body {
+    margin: 0;
+    padding: 0;
+    background: #222;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #gameCanvas {
+    background: #000;
+    border: 2px solid #fff;
+    margin: 10px 0;
+  }
+  #controls, #touchControls {
+    margin: 10px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  button, select {
+    padding: 10px 16px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #touchControls button {
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+  }
+  #scoreBoard {
+    text-align: center;
+    margin-top: 10px;
+  }
 </style>
 </head>
-
 <body>
-<div class="app">
 
-<canvas id="cv" width="300" height="600"></canvas>
+<h1>网页俄罗斯方块</h1>
+<canvas id="gameCanvas"></canvas>
 
-<div class="row">
-  <div>分数：<span id="score">0</span></div>
-  <div>等级：<span id="level">1</span></div>
-</div>
-
-<div class="row">
+<div id="controls">
+  <button id="startBtn">开始</button>
+  <button id="pauseBtn">暂停</button>
+  <button id="toggleSoundBtn">BGM/音效 开关</button>
   <select id="difficulty">
-    <option value="easy">简单</option>
-    <option value="normal" selected>普通</option>
-    <option value="hard">困难</option>
+    <option value="600">简单</option>
+    <option value="350" selected>普通</option>
+    <option value="180">困难</option>
   </select>
 </div>
 
-<div class="row">
-  <button class="btn alt" onclick="toggleMusic()">🎵 BGM</button>
-  <button class="btn alt" onclick="toggleSound()">🔊 音效</button>
+<div id="touchControls">
+  <button id="leftBtn">⬅️</button>
+  <button id="rotateBtn">↻</button>
+  <button id="rightBtn">➡️</button>
+  <button id="downBtn">⬇️</button>
 </div>
 
-<div class="row">
-  <button class="btn" onclick="start()">▶ 开始</button>
-  <button class="btn warn" onclick="pause()">⏸ 暂停</button>
-  <button class="btn danger" onclick="reset()">↻ 重来</button>
+<div id="scoreBoard">
+  分数: <span id="score">0</span><br>
+  <strong>本地排行榜</strong>
+  <ol id="leaderboard"></ol>
 </div>
 
-<div class="controls">
-  <button class="btn" onclick="move(-1)">←</button>
-  <button class="btn" onclick="rotate()">⟳</button>
-  <button class="btn" onclick="move(1)">→</button>
-  <button class="btn" onclick="drop()">↓</button>
-  <button class="btn" onclick="hardDrop()">⤓</button>
-  <button class="btn" onclick="start()">▶</button>
-</div>
-
-<div class="rank" id="rank"></div>
-
-</div>
+<!-- 公共领域/免费可商用音频 -->
+<audio id="bgm" loop src="https://freepd.com/music/Donuts_Ondependent_Loop.mp3"></audio>
+<audio id="moveSfx" src="https://freepd.com/sound/effects/tetris_move.wav"></audio>
+<audio id="lineSfx" src="https://freepd.com/sound/effects/tetris_clear.wav"></audio>
 
 <script>
-const cv=document.getElementById("cv");
-const ctx=cv.getContext("2d");
-const COL=10,ROW=20,S=30;
-const COLORS=["","#22d3ee","#a78bfa","#34d399","#facc15","#fb7185"];
-const SHAPES=[
- [[1,1,1,1]],
- [[2,0,0],[2,2,2]],
- [[0,3,3],[3,3,0]],
- [[4,4],[4,4]],
- [[0,5,0],[5,5,5]]
+// ——————— 基本设定 ———————
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const COLS = 10, ROWS = 20;
+const BLOCK = 30;
+canvas.width = COLS * BLOCK;
+canvas.height = ROWS * BLOCK;
+
+// 触屏自适配
+function resizeCanvas() {
+  const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height) * 0.9;
+  canvas.style.transform = `scale(${scale})`;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ——————— 音效处理 ———————
+let soundOn = false;
+const bgm = document.getElementById('bgm');
+const moveSfx = document.getElementById('moveSfx');
+const lineSfx = document.getElementById('lineSfx');
+function playSound(audio) { if(soundOn) audio.play(); }
+
+// ——————— 游戏逻辑 ———————
+const shapes = [
+  [[1,1,1,1]],               // I
+  [[1,1],[1,1]],             // O
+  [[0,1,0],[1,1,1]],         // T
+  [[1,0,0],[1,1,1]],         // L
+  [[0,0,1],[1,1,1]],         // J
+  [[1,1,0],[0,1,1]],         // S
+  [[0,1,1],[1,1,0]]          // Z
 ];
+const colors = ['cyan','yellow','purple','orange','blue','green','red'];
+let board, current, nextPiece, score, dropInterval, paused;
 
-let board,piece,score=0,level=1;
-let speed=600,playing=false,timer=null;
-let soundOn=true,musicOn=true;
-
-const scoreEl=score=document.getElementById("score");
-const levelEl=document.getElementById("level");
-
-const sndDrop=new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YRAAAA==");
-const bgm=new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YRAAAA==");
-bgm.loop=true;
-
-function reset(){
-  board=Array.from({length:ROW},()=>Array(COL).fill(0));
-  score=0; level=1;
-  updateDifficulty();
-  newPiece();
-  draw();
-}
-reset();
-
-function updateDifficulty(){
-  const d=document.getElementById("difficulty").value;
-  speed=d==="easy"?800:d==="hard"?350:550;
+function initGame() {
+  board = Array.from({length: ROWS}, ()=>Array(COLS).fill(0));
+  score = 0; document.getElementById('score').innerText = score;
+  current = randomPiece();
+  nextPiece = randomPiece();
+  clearInterval(dropInterval);
+  dropInterval = setInterval(drop, speed);
+  paused = false;
+  if(soundOn) bgm.play();
+  updateLeaderboard();
 }
 
-function newPiece(){
-  const s=SHAPES[Math.random()*SHAPES.length|0];
-  piece={s,x:3,y:0};
-  if(collide()){ saveRank(); reset(); }
+function randomPiece() {
+  const id = Math.floor(Math.random() * shapes.length);
+  return { shape: shapes[id], color: colors[id], x: Math.floor(COLS/2)-1, y: 0 };
 }
 
-function collide(){
-  return piece.s.some((r,y)=>r.some((v,x)=>{
-    if(!v)return false;
-    let nx=piece.x+x, ny=piece.y+y;
-    return nx<0||nx>=COL||ny>=ROW||board[ny]?.[nx];
-  }));
-}
-
-function merge(){
-  piece.s.forEach((r,y)=>r.forEach((v,x)=>{
-    if(v)board[piece.y+y][piece.x+x]=v;
-  }));
-  if(soundOn) sndDrop.play();
-}
-
-function clearLines(){
-  board=board.filter(r=>{
-    if(r.every(v=>v)){ score+=100; return false; }
-    return true;
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  board.forEach((row,y)=>{
+    row.forEach((col,x)=>{ if(col) drawBlock(x,y,col); });
   });
-  while(board.length<ROW)board.unshift(Array(COL).fill(0));
-  level=1+Math.floor(score/500);
+  current.shape.forEach((r,i)=>{
+    r.forEach((c,j)=>{ if(c) drawBlock(current.x+j, current.y+i, current.color); });
+  });
 }
 
-function draw(){
-  ctx.clearRect(0,0,300,600);
-  board.forEach((r,y)=>r.forEach((v,x)=>{
-    if(v){ctx.fillStyle=COLORS[v];ctx.fillRect(x*S,y*S,S-1,S-1);}
-  }));
-  piece.s.forEach((r,y)=>r.forEach((v,x)=>{
-    if(v){ctx.fillStyle=COLORS[v];ctx.fillRect((piece.x+x)*S,(piece.y+y)*S,S-1,S-1);}
-  }));
-  document.getElementById("score").textContent=score;
-  document.getElementById("level").textContent=level;
+function drawBlock(x,y,col) {
+  ctx.fillStyle = col; ctx.fillRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);
+  ctx.strokeStyle = '#111'; ctx.strokeRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);
 }
 
-function tick(){
-  if(!playing)return;
-  piece.y++;
-  if(collide()){
-    piece.y--;
+function collide(dx=0,dy=0,shape=null) {
+  shape = shape||current.shape;
+  return shape.some((r,i)=>r.some((c,j)=>{
+    if(!c) return false;
+    let newX = current.x+j+dx, newY = current.y+i+dy;
+    return newX<0 || newX>=COLS || newY>=ROWS || (newY>=0 && board[newY][newX]);
+  }));
+}
+
+function rotatePiece() {
+  const rotated = current.shape[0].map((_,i)=>current.shape.map(r=>r[i]).reverse());
+  if(!collide(0,0,rotated)) { current.shape = rotated; playSound(moveSfx); }
+}
+
+function movePiece(dx) {
+  if(!collide(dx,0)) { current.x += dx; playSound(moveSfx); }
+}
+
+function drop() {
+  if(!collide(0,1)) { current.y++; }
+  else {
     merge();
     clearLines();
-    newPiece();
+    current = nextPiece;
+    nextPiece = randomPiece();
+    if(collide()) gameOver();
   }
   draw();
-  timer=setTimeout(tick,speed);
 }
 
-function start(){
-  if(playing)return;
-  playing=true;
-  updateDifficulty();
-  if(musicOn) bgm.play();
-  tick();
+function merge() {
+  current.shape.forEach((r,i)=>r.forEach((c,j)=>{
+    if(c && current.y+i>=0) board[current.y+i][current.x+j] = current.color;
+  }));
 }
 
-function pause(){
-  playing=false;
-  clearTimeout(timer);
-  bgm.pause();
+function clearLines() {
+  let cleared = 0;
+  for(let y=ROWS-1;y>=0;y--) {
+    if(board[y].every(v=>v)) {
+      board.splice(y,1);
+      board.unshift(Array(COLS).fill(0));
+      cleared++; playSound(lineSfx);
+      y++;
+    }
+  }
+  score += cleared*10;
+  document.getElementById('score').innerText = score;
 }
 
-function move(d){
-  piece.x+=d;
-  if(collide())piece.x-=d;
-  draw();
+function gameOver() {
+  clearInterval(dropInterval);
+  alert("游戏结束! 分数: "+score);
+  saveScore(score); updateLeaderboard();
 }
 
-function rotate(){
-  const p=piece.s;
-  piece.s=piece.s[0].map((_,i)=>piece.s.map(r=>r[i]).reverse());
-  if(collide())piece.s=p;
-  draw();
+function saveScore(s) {
+  let arr = JSON.parse(localStorage.getItem('tetrisScores')||'[]');
+  arr.push(s); arr.sort((a,b)=>b-a);
+  if(arr.length>5) arr.length=5;
+  localStorage.setItem('tetrisScores',JSON.stringify(arr));
 }
 
-function drop(){
-  piece.y++;
-  if(collide())piece.y--;
-  draw();
+function updateLeaderboard() {
+  const list = document.getElementById('leaderboard');
+  list.innerHTML = '';
+  JSON.parse(localStorage.getItem('tetrisScores')||'[]')
+    .forEach(s=>{ let li=document.createElement('li'); li.innerText=s; list.appendChild(li); });
 }
 
-function hardDrop(){
-  while(!collide())piece.y++;
-  piece.y--;
-  merge();
-  clearLines();
-  newPiece();
-  draw();
-}
-
-document.onkeydown=e=>{
-  if(e.key==="ArrowLeft")move(-1);
-  if(e.key==="ArrowRight")move(1);
-  if(e.key==="ArrowUp")rotate();
-  if(e.key==="ArrowDown")drop();
-  if(e.key===" ")hardDrop();
+// ——————— 控件事件 ———————
+let speed = parseInt(document.getElementById('difficulty').value);
+document.getElementById('startBtn').onclick = initGame;
+document.getElementById('pauseBtn').onclick = ()=>{
+  paused = !paused; if(paused) bgm.pause(); else if(soundOn) bgm.play();
+};
+document.getElementById('toggleSoundBtn').onclick = ()=>{
+  soundOn = !soundOn; if(soundOn && !paused) bgm.play(); else bgm.pause();
+};
+document.getElementById('difficulty').onchange = (e)=>{
+  speed = parseInt(e.target.value);
+  if(dropInterval) { clearInterval(dropInterval); dropInterval=setInterval(drop,speed); }
 };
 
-function toggleSound(){ soundOn=!soundOn; }
-function toggleMusic(){ musicOn=!musicOn; musicOn?bgm.play():bgm.pause(); }
+// 键盘控制
+document.addEventListener('keydown',e=>{
+  if(!current) return;
+  if(e.key==='ArrowLeft') movePiece(-1);
+  if(e.key==='ArrowRight') movePiece(1);
+  if(e.key==='ArrowDown') drop();
+  if(e.key==='ArrowUp') rotatePiece();
+});
 
-/* 本地排行榜 */
-function saveRank(){
-  const r=JSON.parse(localStorage.getItem("tetrisRank")||"[]");
-  r.push({score,date:new Date().toLocaleString()});
-  r.sort((a,b)=>b.score-a.score);
-  localStorage.setItem("tetrisRank",JSON.stringify(r.slice(0,5)));
-  renderRank();
-}
-function renderRank(){
-  const r=JSON.parse(localStorage.getItem("tetrisRank")||"[]");
-  document.getElementById("rank").innerHTML=
-    "<b>🏆 本地排行榜</b>"+r.map((v,i)=>`<div>${i+1}. ${v.score}</div>`).join("");
-}
-renderRank();
+// 触屏按钮
+document.getElementById('leftBtn').onclick = ()=>movePiece(-1);
+document.getElementById('rightBtn').onclick = ()=>movePiece(1);
+document.getElementById('downBtn').onclick = ()=>drop();
+document.getElementById('rotateBtn').onclick = ()=>rotatePiece();
+
 </script>
 </body>
 </html>
