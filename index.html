@@ -16,6 +16,12 @@ body {
   height:100vh;
   overflow:hidden;
 }
+#scoreBoard {
+  margin:5px;
+  text-align:center;
+}
+#scoreBoard ol {padding-left:20px;}
+
 #gameWrapper {
   display:flex;
   width:95%;
@@ -25,35 +31,56 @@ body {
 #leftControls, #rightControls {
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:8px;
   justify-content:flex-start;
 }
 #leftControls button, #leftControls select, #rightControls button {
-  padding:10px 16px;
-  font-size:16px;
+  padding:6px 10px;
+  font-size:14px;
   cursor:pointer;
-  background:#ffb347; color:#000; border:none; border-radius:8px;
+  background:#ffb347; color:#000; border:none; border-radius:6px;
   box-shadow:2px 2px 5px rgba(0,0,0,0.5);
 }
+
 #gameCanvas {
   background:#fff;
   border:3px solid #ffb347;
   border-radius:10px;
-  margin:0 10px;
+  margin:0 5px;
   touch-action:none;
   flex-grow:1;
+  max-height:80vh;
 }
-#scoreBoard {
-  margin-bottom:10px;
-}
-#scoreBoard ol {padding-left:20px;}
+
 #touchControls {
-  display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+  margin:5px;
 }
-#touchControls button {width:60px; height:60px; font-size:20px;}
+#touchControls button {
+  width:50px; height:50px; font-size:18px;
+  background:#ffb347; color:#000; border:none; border-radius:6px;
+  box-shadow:2px 2px 5px rgba(0,0,0,0.5);
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  #gameWrapper {flex-direction:column; align-items:center;}
+  #leftControls, #rightControls {flex-direction:row; margin:5px; gap:5px;}
+  #leftControls button, #leftControls select, #rightControls button {padding:8px 12px; font-size:14px;}
+  #gameCanvas {width:95vw; height:60vh;}
+}
 </style>
 </head>
 <body>
+
+<div id="scoreBoard">
+  分数: <span id="score">0</span><br>
+  <strong>本地排行榜</strong>
+  <ol id="leaderboard"></ol>
+</div>
 
 <div id="gameWrapper">
   <div id="leftControls">
@@ -70,10 +97,10 @@ body {
   <canvas id="gameCanvas"></canvas>
 
   <div id="rightControls">
-    <div id="scoreBoard">
-      分数: <span id="score">0</span><br>
-      <strong>本地排行榜</strong>
-      <ol id="leaderboard"></ol>
+    <div id="scoreBoardRight">
+      分数: <span id="scoreRight">0</span><br>
+      <strong>排行榜</strong>
+      <ol id="leaderboardRight"></ol>
     </div>
   </div>
 </div>
@@ -96,7 +123,7 @@ const ctx=canvas.getContext('2d');
 let COLS=10, ROWS=20;
 let BLOCK;
 function resizeCanvas(){
-  const w=canvas.parentElement.clientWidth - 160; // 两侧控件宽度
+  const w=canvas.parentElement.clientWidth - 120;
   const h=canvas.parentElement.clientHeight;
   BLOCK=Math.floor(Math.min(w/COLS,h/ROWS));
   canvas.width=COLS*BLOCK;
@@ -120,10 +147,10 @@ const shapes=[
 let colors=['#ff0000','#ff7700','#ffff00','#77ff00','#00ff77','#00ffff','#7700ff'];
 let board,current,nextPiece,score,dropInterval,paused=false,speed=parseInt(document.getElementById('difficulty').value);
 
-// —— 初始化游戏
+// 初始化游戏
 function initGame(){
   board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
-  score=0; document.getElementById('score').innerText=score;
+  score=0; updateScore();
   current=randomPiece();
   nextPiece=randomPiece();
   clearInterval(dropInterval);
@@ -168,7 +195,12 @@ function clearLines(){
   for(let y=ROWS-1;y>=0;y--){
     if(board[y].every(v=>v)){board.splice(y,1);board.unshift(Array(COLS).fill(0));cleared++;playSound(lineSfx);y++;}
   }
-  score+=cleared*10; document.getElementById('score').innerText=score;
+  score+=cleared*10; updateScore();
+}
+
+function updateScore(){
+  document.getElementById('score').innerText=score;
+  document.getElementById('scoreRight').innerText=score;
 }
 
 function gameOver(){clearInterval(dropInterval);alert("游戏结束! 分数: "+score);saveScore(score);updateLeaderboard();}
@@ -179,26 +211,34 @@ function saveScore(s){
 }
 
 function updateLeaderboard(){
-  const list=document.getElementById('leaderboard'); list.innerHTML='';
-  JSON.parse(localStorage.getItem('tetrisScores')||'[]').forEach(s=>{let li=document.createElement('li');li.innerText=s;list.appendChild(li);});
+  const list=document.getElementById('leaderboard');
+  const listRight=document.getElementById('leaderboardRight');
+  list.innerHTML=''; listRight.innerHTML='';
+  JSON.parse(localStorage.getItem('tetrisScores')||'[]').forEach(s=>{
+    let li1=document.createElement('li'); li1.innerText=s; list.appendChild(li1);
+    let li2=document.createElement('li'); li2.innerText=s; listRight.appendChild(li2);
+  });
 }
 
-// —— 控件事件
+// 控件事件
 document.getElementById('startBtn').onclick=()=>{paused=false; initGame();};
 document.getElementById('pauseBtn').onclick=()=>{paused=!paused; if(paused) bgm.pause(); else if(soundOn) bgm.play();};
-document.getElementById('toggleSoundBtn').onclick=()=>{soundOn=!soundOn; if(soundOn&&!paused){bgm.play();} else {bgm.pause();} };
+document.getElementById('toggleSoundBtn').onclick=()=>{
+  soundOn=!soundOn;
+  if(soundOn&&!paused){bgm.play();} else {bgm.pause();}
+};
 document.getElementById('difficulty').onchange=(e)=>{speed=parseInt(e.target.value); if(dropInterval){clearInterval(dropInterval); dropInterval=setInterval(gameLoop,speed);}};
 
-// —— 键盘控制
+// 键盘控制
 document.addEventListener('keydown',e=>{if(!current) return; if(e.key==='ArrowLeft') movePiece(-1); if(e.key==='ArrowRight') movePiece(1); if(e.key==='ArrowDown') drop(); if(e.key==='ArrowUp') rotatePiece();});
 
-// —— 触屏按钮
+// 触屏按钮
 document.getElementById('leftBtn').onclick=()=>movePiece(-1);
 document.getElementById('rightBtn').onclick=()=>movePiece(1);
 document.getElementById('downBtn').onclick=()=>drop();
 document.getElementById('rotateBtn').onclick=()=>rotatePiece();
 
-// —— 手势控制
+// 手势控制
 let touchStartX=0,touchStartY=0;
 canvas.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY;});
 canvas.addEventListener('touchend',e=>{
@@ -208,7 +248,7 @@ canvas.addEventListener('touchend',e=>{
   else{if(dy<-30) rotatePiece(); else if(dy>30) drop();}
 });
 
-// —— 游戏循环
+// 游戏循环
 function gameLoop(){drop();}
 
 // 初始化
