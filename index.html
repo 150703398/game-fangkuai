@@ -8,7 +8,9 @@
 html, body {margin:0; padding:0; height:100%; width:100%; font-family:Arial,sans-serif; background:#a0eaff;}
 body {display:flex; flex-direction:column; height:100vh;}
 #gameContainer {flex:1; display:flex; flex-direction:row; overflow:hidden; width:100%;}
-#leftControlsWrapper {display:flex; flex-direction:column; width:140px; box-sizing:border-box; padding:5px;}
+#leftControlsWrapper {display:flex; flex-direction:column; width:160px; box-sizing:border-box; padding:5px;}
+#nextCanvasWrapper {height:120px; margin-bottom:5px; display:flex; justify-content:center; align-items:center;}
+#nextCanvas {background:#fff; border:2px solid #ffb347; border-radius:5px;}
 #leaderboardWrapper {flex:1; overflow-y:auto; margin-bottom:5px;}
 #leaderboardWrapper ol {padding-left:15px; margin:5px 0; font-size:14px;}
 #leftControls {display:flex; flex-direction:column; gap:5px; justify-content:flex-start;}
@@ -23,6 +25,9 @@ body {display:flex; flex-direction:column; height:100vh;}
 
 <div id="gameContainer">
   <div id="leftControlsWrapper">
+    <div id="nextCanvasWrapper">
+      <canvas id="nextCanvas" width="80" height="80"></canvas>
+    </div>
     <div id="leaderboardWrapper">
       <strong>排行榜</strong>
       <ol id="leaderboard"></ol>
@@ -52,6 +57,9 @@ body {display:flex; flex-direction:column; height:100vh;}
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const nextCanvas = document.getElementById('nextCanvas');
+const nextCtx = nextCanvas.getContext('2d');
+
 let COLS = 10, ROWS = 20, BLOCK;
 let board=[], current=null, nextPiece=null, dropInterval=null, speed=parseInt(document.getElementById('difficulty').value), paused=false, score=0;
 
@@ -78,9 +86,19 @@ function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   board.forEach((r,y)=>r.forEach((c,x)=>c&&drawBlock(x,y,c)));
   if(current) current.shape.forEach((r,i)=>r.forEach((c,j)=>c&&drawBlock(current.x+j,current.y+i,current.color)));
+  drawNext();
 }
 
-function drawBlock(x,y,c){ctx.fillStyle=c; ctx.fillRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK); ctx.strokeStyle="#fff"; ctx.strokeRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);}
+function drawBlock(x,y,c,ctxToUse=ctx,BLOCK_SIZE=BLOCK){ctxToUse.fillStyle=c; ctxToUse.fillRect(x*BLOCK_SIZE,y*BLOCK_SIZE,BLOCK_SIZE,BLOCK_SIZE); ctxToUse.strokeStyle="#fff"; ctxToUse.strokeRect(x*BLOCK_SIZE,y*BLOCK_SIZE,BLOCK_SIZE,BLOCK_SIZE);}
+
+// 绘制下一个方块
+function drawNext(){
+  if(!nextPiece) return;
+  const ctxB = nextCtx;
+  ctxB.clearRect(0,0,nextCanvas.width,nextCanvas.height);
+  const size = Math.min(nextCanvas.width/4, nextCanvas.height/4);
+  nextPiece.shape.forEach((r,i)=>r.forEach((c,j)=>{if(c) drawBlock(j,i,nextPiece.color,ctxB,size);}));
+}
 
 function collide(dx=0,dy=0,shape=null){shape=shape||current.shape; return shape.some((r,i)=>r.some((c,j)=>c&&(current.x+j+dx<0||current.x+j+dx>=COLS||current.y+i+dy>=ROWS||(current.y+i+dy>=0&&board[current.y+i+dy][current.x+j]))));}
 
