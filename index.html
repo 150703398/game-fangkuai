@@ -2,30 +2,32 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>最终可上线网页俄罗斯方块</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>卡通风格网页俄罗斯方块</title>
 <style>
-:root {
-  --bg-color: #222;
-  --block-colors: cyan,yellow,purple,orange,blue,green,red;
-  --button-bg: #555;
-  --button-color: #fff;
-  --button-shadow: rgba(0,0,0,0.5);
-}
 body {
   margin:0; padding:0;
   font-family: Arial, sans-serif;
   display:flex; flex-direction:column; align-items:center;
-  background: var(--bg-color);
-  color: #fff;
+  background:#a0eaff; /* 卡通风格背景 */
+  color:#000;
+  height:100vh;
+  overflow:hidden;
 }
-h1 {margin:10px;}
-#gameCanvas {background:#000; border:2px solid #fff; margin:10px 0;}
-#controls, #touchControls, #themeSwitch {display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px;}
+h1{margin:10px;}
+#gameCanvas{
+  background:#fff;
+  border:3px solid #ffb347;
+  border-radius:10px;
+  touch-action: none; /* 禁止默认触控缩放滚动 */
+}
+#controls, #touchControls {
+  display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px;
+}
 button, select {
   padding:10px 16px; font-size:16px; cursor:pointer;
-  background: var(--button-bg); color: var(--button-color); border:none; border-radius:5px;
-  box-shadow: 2px 2px 5px var(--button-shadow);
+  background:#ffb347; color:#000; border:none; border-radius:8px;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
 }
 #touchControls button {width:60px; height:60px; font-size:20px;}
 #scoreBoard{text-align:center;margin-top:10px;}
@@ -33,7 +35,7 @@ button, select {
 </head>
 <body>
 
-<h1>网页俄罗斯方块</h1>
+<h1>卡通风格俄罗斯方块</h1>
 <canvas id="gameCanvas"></canvas>
 
 <div id="controls">
@@ -45,12 +47,6 @@ button, select {
     <option value="350" selected>普通</option>
     <option value="180">困难</option>
   </select>
-</div>
-
-<div id="themeSwitch">
-  <button data-theme="cartoon">卡通风格</button>
-  <button data-theme="modern">渐变现代</button>
-  <button data-theme="dark">黑暗科技</button>
 </div>
 
 <div id="touchControls">
@@ -66,25 +62,26 @@ button, select {
   <ol id="leaderboard"></ol>
 </div>
 
-<!-- 可商用在线音效 -->
+<!-- 公共领域可商用音效 -->
 <audio id="bgm" loop src="https://freepd.com/music/Donuts_Ondependent_Loop.mp3"></audio>
 <audio id="moveSfx" src="https://freepd.com/sound/effects/tetris_move.wav"></audio>
 <audio id="lineSfx" src="https://freepd.com/sound/effects/tetris_clear.wav"></audio>
 
 <script>
-// —— 基本设定
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const COLS = 10, ROWS = 20;
-const BLOCK = 30;
-canvas.width = COLS * BLOCK;
-canvas.height = ROWS * BLOCK;
+// —— Canvas自适应
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+let COLS=10, ROWS=20;
+let BLOCK;
 function resizeCanvas(){
-  const scale = Math.min(window.innerWidth/canvas.width, window.innerHeight/canvas.height)*0.9;
-  canvas.style.transform = `scale(${scale})`;
+  const w=window.innerWidth*0.95;
+  const h=window.innerHeight*0.6;
+  BLOCK=Math.floor(Math.min(w/COLS,h/ROWS));
+  canvas.width=COLS*BLOCK;
+  canvas.height=ROWS*BLOCK;
+  draw();
 }
 window.addEventListener('resize',resizeCanvas);
-resizeCanvas();
 
 // —— 音效
 let soundOn=false;
@@ -98,58 +95,91 @@ const shapes=[
 [[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],
 [[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[1,1,0],[0,1,1]],[[0,1,1],[1,1,0]]
 ];
-let colors=['cyan','yellow','purple','orange','blue','green','red'];
+let colors=['#ff0000','#ff7700','#ffff00','#77ff00','#00ff77','#00ffff','#7700ff'];
 let board,current,nextPiece,score,dropInterval,paused,speed=parseInt(document.getElementById('difficulty').value);
 
-// —— 风格切换
-const themeColors={
-  cartoon: {bg:'#a0eaff',button:'#ffb347',block:['#ff0000','#ff7700','#ffff00','#77ff00','#00ff77','#00ffff','#7700ff']},
-  modern: {bg:'linear-gradient(135deg,#89f7fe,#66a6ff)',button:'#66a6ff',block:['#00d8ff','#00ffe8','#66ffcc','#ccff66','#ffdd00','#ff6600','#ff3366']},
-  dark: {bg:'#111',button:'#555',block:['#0ff','#ff0','#f0f','#f80','#08f','#0f0','#f00']}
-};
-function setTheme(theme){
-  const t=themeColors[theme];
-  document.body.style.background=t.bg;
-  document.querySelectorAll('button').forEach(b=>b.style.background=t.button);
-  colors=t.block;
-}
-document.querySelectorAll('#themeSwitch button').forEach(b=>{
-  b.onclick=()=>setTheme(b.dataset.theme);
-});
-
-// —— 游戏初始化
 function initGame(){
   board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
   score=0; document.getElementById('score').innerText=score;
   current=randomPiece();
   nextPiece=randomPiece();
   clearInterval(dropInterval);
-  dropInterval=setInterval(gameLoop,speed);
+  dropInterval=setInterval(drop,speed);
   paused=false;
   if(soundOn) bgm.play();
+  resizeCanvas();
   updateLeaderboard();
 }
-function randomPiece(){return {shape:shapes[Math.floor(Math.random()*shapes.length)],color:colors[Math.floor(Math.random()*colors.length)],x:Math.floor(COLS/2)-1,y:0};}
-function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);
-  board.forEach((r,y)=>r.forEach((c,x)=>c&&drawBlock(x,y,c)));
-  current.shape.forEach((r,i)=>r.forEach((c,j)=>c&&drawBlock(current.x+j,current.y+i,current.color)));
-}
-function drawBlock(x,y,c){ctx.fillStyle=c;ctx.fillRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);ctx.strokeStyle='#111';ctx.strokeRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);}
-function collide(dx=0,dy=0,shape=null){shape=shape||current.shape;return shape.some((r,i)=>r.some((c,j)=>c&&(current.x+j+dx<0||current.x+j+dx>=COLS||current.y+i+dy>=ROWS|| (current.y+i+dy>=0&&board[current.y+i+dy][current.x+j]))));}
-function rotatePiece(){const r=current.shape[0].map((_,i)=>current.shape.map(row=>row[i]).reverse());if(!collide(0,0,r)) {current.shape=r;playSound(moveSfx);}}
-function movePiece(dx){if(!collide(dx,0)){current.x+=dx;playSound(moveSfx);}}
-function drop(){if(!collide(0,1)){current.y++;}else{merge();clearLines();current=nextPiece;nextPiece=randomPiece();if(collide()) gameOver();}draw();}
-function merge(){current.shape.forEach((r,i)=>r.forEach((c,j)=>{if(c&&current.y+i>=0) board[current.y+i][current.x+j]=current.color;}));}
-function clearLines(){let cleared=0;for(let y=ROWS-1;y>=0;y--){if(board[y].every(v=>v)){board.splice(y,1);board.unshift(Array(COLS).fill(0));cleared++;playSound(lineSfx);y++;}}score+=cleared*10;document.getElementById('score').innerText=score;}
-function gameOver(){clearInterval(dropInterval);alert("游戏结束! 分数: "+score);saveScore(score);updateLeaderboard();}
-function saveScore(s){let arr=JSON.parse(localStorage.getItem('tetrisScores')||'[]');arr.push(s);arr.sort((a,b)=>b-a);if(arr.length>5) arr.length=5;localStorage.setItem('tetrisScores',JSON.stringify(arr));}
-function updateLeaderboard(){const list=document.getElementById('leaderboard');list.innerHTML='';JSON.parse(localStorage.getItem('tetrisScores')||'[]').forEach(s=>{let li=document.createElement('li');li.innerText=s;list.appendChild(li);});}
 
-// —— 控件事件
+function randomPiece(){
+  return {shape:shapes[Math.floor(Math.random()*shapes.length)],color:colors[Math.floor(Math.random()*colors.length)],x:Math.floor(COLS/2)-1,y:0};
+}
+
+function draw(){
+  if(!ctx) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  board.forEach((r,y)=>r.forEach((c,x)=>c&&drawBlock(x,y,c)));
+  if(current) current.shape.forEach((r,i)=>r.forEach((c,j)=>c&&drawBlock(current.x+j,current.y+i,current.color)));
+}
+
+function drawBlock(x,y,c){
+  ctx.fillStyle=c; ctx.fillRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);
+  ctx.strokeStyle='#fff'; ctx.strokeRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);
+}
+
+function collide(dx=0,dy=0,shape=null){
+  shape=shape||current.shape;
+  return shape.some((r,i)=>r.some((c,j)=>c&&(current.x+j+dx<0||current.x+j+dx>=COLS||current.y+i+dy>=ROWS||(current.y+i+dy>=0&&board[current.y+i+dy][current.x+j]))));
+}
+
+function rotatePiece(){
+  const r=current.shape[0].map((_,i)=>current.shape.map(row=>row[i]).reverse());
+  if(!collide(0,0,r)) {current.shape=r;playSound(moveSfx);}
+}
+
+function movePiece(dx){if(!collide(dx,0)){current.x+=dx;playSound(moveSfx);}}
+
+function drop(){
+  if(!collide(0,1)){current.y++;}
+  else{merge();clearLines();current=nextPiece;nextPiece=randomPiece();if(collide()) gameOver();}
+  draw();
+}
+
+function merge(){
+  current.shape.forEach((r,i)=>r.forEach((c,j)=>{if(c&&current.y+i>=0) board[current.y+i][current.x+j]=current.color;}));
+}
+
+function clearLines(){
+  let cleared=0;
+  for(let y=ROWS-1;y>=0;y--){
+    if(board[y].every(v=>v)){board.splice(y,1);board.unshift(Array(COLS).fill(0));cleared++;playSound(lineSfx);y++;}
+  }
+  score+=cleared*10;document.getElementById('score').innerText=score;
+}
+
+function gameOver(){
+  clearInterval(dropInterval);
+  alert("游戏结束! 分数: "+score);
+  saveScore(score);
+  updateLeaderboard();
+}
+
+function saveScore(s){
+  let arr=JSON.parse(localStorage.getItem('tetrisScores')||'[]');
+  arr.push(s); arr.sort((a,b)=>b-a); if(arr.length>5) arr.length=5;
+  localStorage.setItem('tetrisScores',JSON.stringify(arr));
+}
+
+function updateLeaderboard(){
+  const list=document.getElementById('leaderboard'); list.innerHTML='';
+  JSON.parse(localStorage.getItem('tetrisScores')||'[]').forEach(s=>{let li=document.createElement('li');li.innerText=s;list.appendChild(li);});
+}
+
+// —— 控件
 document.getElementById('startBtn').onclick=initGame;
 document.getElementById('pauseBtn').onclick=()=>{paused=!paused;if(paused) bgm.pause();else if(soundOn) bgm.play();};
 document.getElementById('toggleSoundBtn').onclick=()=>{soundOn=!soundOn;if(soundOn&&!paused) bgm.play();else bgm.pause();};
-document.getElementById('difficulty').onchange=(e)=>{speed=parseInt(e.target.value);if(dropInterval){clearInterval(dropInterval);dropInterval=setInterval(gameLoop,speed);}};
+document.getElementById('difficulty').onchange=(e)=>{speed=parseInt(e.target.value);if(dropInterval){clearInterval(dropInterval);dropInterval=setInterval(drop,speed);}};
 document.addEventListener('keydown',e=>{if(!current) return;if(e.key==='ArrowLeft') movePiece(-1);if(e.key==='ArrowRight') movePiece(1);if(e.key==='ArrowDown') drop();if(e.key==='ArrowUp') rotatePiece();});
 document.getElementById('leftBtn').onclick=()=>movePiece(-1);
 document.getElementById('rightBtn').onclick=()=>movePiece(1);
@@ -166,8 +196,8 @@ canvas.addEventListener('touchend',e=>{
   else{if(dy<-30) rotatePiece();else if(dy>30) drop();}
 });
 
+// —— 游戏循环
 function gameLoop(){if(!paused) drop();}
 </script>
-
 </body>
 </html>
