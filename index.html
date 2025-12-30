@@ -12,15 +12,20 @@ body {
   color:#000;
   display:flex;
   flex-direction:column;
-  align-items:center;
   height:100vh;
-  overflow:hidden;
 }
-#gameWrapper {
+#scoreBoard {
+  padding:5px 10px;
+  font-size:16px;
+  text-align:center;
+}
+#scoreBoard ol {padding-left:20px; margin:5px 0;}
+#gameArea {
   display:flex;
-  width:95%;
-  max-width:700px;
-  flex-grow:1;
+  flex:1;
+  padding:5px;
+  gap:10px;
+  box-sizing:border-box;
 }
 #leftControls, #rightControls {
   display:flex;
@@ -46,23 +51,15 @@ body {
   background:#fff;
   border:3px solid #ffb347;
   border-radius:10px;
-  margin:0 10px;
-  touch-action:none;
   flex-grow:1;
+  touch-action:none;
 }
-#scoreBoard {
-  margin-bottom:10px;
-}
-#scoreBoard ol {padding-left:20px;}
 #touchControls {
-  display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:8px 0;
-  width:100%; max-width:700px;
-  background:rgba(255,255,255,0.2);
-  padding:5px 0;
-  border-radius:8px;
+  display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+  padding:5px 0; background:rgba(255,255,255,0.2);
 }
 #touchControls button {
-  width:60px; height:60px; font-size:20px; 
+  width:60px; height:60px; font-size:20px;
   border-radius:8px; border:none; background:#ffb347; color:#000;
   box-shadow:1px 1px 3px rgba(0,0,0,0.5); cursor:pointer;
 }
@@ -70,7 +67,13 @@ body {
 </head>
 <body>
 
-<div id="gameWrapper">
+<div id="scoreBoard">
+  分数: <span id="score">0</span> &nbsp;&nbsp;
+  <strong>本地排行榜</strong>
+  <ol id="leaderboard"></ol>
+</div>
+
+<div id="gameArea">
   <div id="leftControls">
     <select id="difficulty">
       <option value="600">简单</option>
@@ -85,11 +88,7 @@ body {
   <canvas id="gameCanvas"></canvas>
 
   <div id="rightControls">
-    <div id="scoreBoard">
-      分数: <span id="score">0</span><br>
-      <strong>本地排行榜</strong>
-      <ol id="leaderboard"></ol>
-    </div>
+    <!-- 右侧空着也行，排行榜已在顶部显示 -->
   </div>
 </div>
 
@@ -111,9 +110,9 @@ const ctx=canvas.getContext('2d');
 let COLS=10, ROWS=20;
 let BLOCK;
 function resizeCanvas(){
-  const w=canvas.parentElement.clientWidth - 160; 
-  const h=canvas.parentElement.clientHeight - 80; // 为触控按钮留出空间
-  BLOCK=Math.floor(Math.min(w/COLS,h/ROWS));
+  const areaHeight = document.getElementById('gameArea').clientHeight;
+  const areaWidth = document.getElementById('gameArea').clientWidth - 160; // 左侧控件宽度
+  BLOCK=Math.floor(Math.min(areaWidth/COLS, areaHeight/ROWS));
   canvas.width=COLS*BLOCK;
   canvas.height=ROWS*BLOCK;
   draw();
