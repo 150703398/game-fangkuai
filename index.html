@@ -117,30 +117,39 @@ document.getElementById('startBtn').onclick=startGame;
 document.getElementById('pauseBtn').onclick=()=>{paused=!paused;};
 document.getElementById('difficulty').onchange=e=>{speed=parseInt(e.target.value);if(dropInterval){clearInterval(dropInterval);dropInterval=setInterval(drop,speed);}};
 
-// 键盘 + 长按(DAS)
-let keys={},das=100;
-document.addEventListener('keydown',e=>{if(!current) return;keys[e.key]=Date.now();keyAction(e.key);});
-document.addEventListener('keyup',e=>{delete keys[e.key];});
+// 竞技级 DAS + 多键独立响应
+const keyState={}, keyTimers={}, DAS_INTERVAL=50;
+document.addEventListener('keydown',e=>{
+  if(!current) return;
+  if(!keyState[e.key]){keyState[e.key]=true; keyAction(e.key); keyTimers[e.key]=setInterval(()=>keyAction(e.key),DAS_INTERVAL);}
+});
+document.addEventListener('keyup',e=>{
+  keyState[e.key]=false;
+  if(keyTimers[e.key]){clearInterval(keyTimers[e.key]); delete keyTimers[e.key];}
+});
 function keyAction(key){
-  if(key==='ArrowLeft') movePiece(-1);
-  else if(key==='ArrowRight') movePiece(1);
-  else if(key==='ArrowDown') drop();
-  else if(key==='ArrowUp') rotatePiece();
-  else if(key===' ') hardDrop();
+  if(!current) return;
+  switch(key){
+    case 'ArrowLeft': movePiece(-1); break;
+    case 'ArrowRight': movePiece(1); break;
+    case 'ArrowDown': drop(); break;
+    case 'ArrowUp': rotatePiece(); break;
+    case ' ': hardDrop(); break;
+  }
 }
-setInterval(()=>{for(let k in keys){if(Date.now()-keys[k]>das)keyAction(k);}},30);
 
 // 触屏按钮
-document.getElementById('leftBtn').onmousedown=document.getElementById('leftBtn').ontouchstart=()=>keys['ArrowLeft']=Date.now();
-document.getElementById('rightBtn').onmousedown=document.getElementById('rightBtn').ontouchstart=()=>keys['ArrowRight']=Date.now();
-document.getElementById('downBtn').onmousedown=document.getElementById('downBtn').ontouchstart=()=>keys['ArrowDown']=Date.now();
-document.getElementById('rotateBtn').onclick=document.getElementById('rotateBtn').ontouchstart=()=>rotatePiece();
-document.getElementById('dropBtn').onclick=document.getElementById('dropBtn').ontouchstart=()=>hardDrop();
-document.getElementById('leftBtn').onmouseup=document.getElementById('rightBtn').onmouseup=document.getElementById('downBtn').onmouseup=document.getElementById('leftBtn').ontouchend=document.getElementById('rightBtn').ontouchend=document.getElementById('downBtn').ontouchend=()=>{};
+['leftBtn','rightBtn','downBtn'].forEach(id=>{
+  const btn=document.getElementById(id);
+  btn.onmousedown=btn.ontouchstart=()=>{keyState[btn.id]=true; keyActionMap(btn.id); keyTimers[btn.id]=setInterval(()=>keyActionMap(btn.id),DAS_INTERVAL);}
+  btn.onmouseup=btn.ontouchend=()=>{keyState[btn.id]=false; if(keyTimers[btn.id]){clearInterval(keyTimers[btn.id]); delete keyTimers[btn.id];}}
+});
+document.getElementById('rotateBtn').onclick=document.getElementById('dropBtn').onclick=function(){if(this.id==='rotateBtn') rotatePiece(); else hardDrop();}
+function keyActionMap(id){switch(id){case 'leftBtn':movePiece(-1);break;case 'rightBtn':movePiece(1);break;case 'downBtn':drop();break;}}
 
 // 手势滑动
 let touchStartX=0,touchStartY=0;
-canvas.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;});
+canvas.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY;});
 canvas.addEventListener('touchend',e=>{
   let dx=e.changedTouches[0].clientX-touchStartX;
   let dy=e.changedTouches[0].clientY-touchStartY;
