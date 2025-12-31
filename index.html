@@ -1,111 +1,111 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>卡通俄罗斯方块</title>
 
 <style>
-* { box-sizing: border-box; font-family: "Comic Sans MS","Arial Rounded MT Bold",sans-serif; }
-body {
-  margin: 0;
-  background: #cceeff;
-  height: 100vh;
-  display: flex;
+*{box-sizing:border-box;font-family:"Comic Sans MS","Arial Rounded MT Bold",sans-serif}
+body{
+  margin:0;
+  height:100vh;
+  background:#cceeff;
+}
+#app{
+  display:flex;
+  width:100%;
+  height:100%;
 }
 
-/* === 主布局 === */
-#app {
-  display: flex;
-  width: 100%;
-  height: 100%;
+/* ===== 左侧 30% ===== */
+#left{
+  width:30%;
+  background:#fff3cd;
+  display:flex;
+  flex-direction:column;
 }
 
-/* === 左侧面板 === */
-#leftPanel {
-  width: 20%;
-  min-width: 120px;
-  background: #fff3cd;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* 上半：排行榜 */
+#rankBox{
+  height:50%;
+  padding:8px;
+}
+#rankBox h3{margin:4px 0;font-size:14px}
+#rankList{font-size:12px}
+
+/* 下半：预览 + 控制 */
+#controlBox{
+  height:50%;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
 
-/* === 右侧游戏区 === */
-#gameArea {
-  width: 80%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px;
+.panel{
+  background:#fff;
+  border-radius:10px;
+  padding:6px;
+  text-align:center;
 }
 
-/* === Canvas === */
-#gameCanvas {
-  width: 100%;
-  aspect-ratio: 10 / 20;
-  background: #222;
-  border-radius: 12px;
+#nextCanvas{
+  width:100%;
+  aspect-ratio:1/1;
+  background:#333;
+  border-radius:8px;
 }
 
-/* === 排行榜 === */
-.panel {
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 6px;
-  text-align: center;
-  font-size: 12px;
+/* ===== 右侧 70% ===== */
+#right{
+  width:70%;
+  display:flex;
+  flex-direction:column;
 }
 
-#rankList {
-  font-size: 11px;
+/* Canvas 区 */
+#gameWrap{
+  flex:1;
+  padding:6px;
+}
+#gameCanvas{
+  width:100%;
+  height:100%;
+  aspect-ratio:10/20;
+  background:#222;
+  border-radius:12px;
 }
 
-/* === 下一个方块 === */
-#nextBox canvas {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: #333;
-  border-radius: 8px;
+/* 方向键（占满底部） */
+#controls{
+  height:80px;
+  display:flex;
+  width:100%;
 }
-
-/* === 按钮 === */
-button, select {
-  width: 100%;
-  padding: 6px;
-  font-size: 12px;
-  border-radius: 8px;
-  border: none;
-  background: #4db8ff;
-  color: #fff;
+.ctrl{
+  flex:1;
+  background:#ffb84d;
+  margin:4px;
+  border-radius:12px;
+  font-size:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
 }
+.ctrl:active{background:#ff9f1a}
 
-button:active { background: #3399ff; }
-
-/* === 控制键 === */
-#controls {
-  width: 100%;
-  display: flex;
-  justify-content: space-around;
-  margin-top: 6px;
+button,select{
+  width:100%;
+  padding:6px;
+  font-size:13px;
+  border:none;
+  border-radius:8px;
+  background:#4db8ff;
+  color:#fff;
 }
-
-.ctrl {
-  width: 22%;
-  padding: 10px 0;
-  background: #ffb84d;
-  border-radius: 10px;
-  text-align: center;
-  font-size: 14px;
-}
-
-/* === 响应式 === */
-@media (max-width: 768px) {
-  #leftPanel { width: 30%; }
-  #gameArea { width: 70%; }
-}
+button:active{background:#3399ff}
 </style>
 </head>
 
@@ -113,33 +113,34 @@ button:active { background: #3399ff; }
 <div id="app">
 
   <!-- 左侧 -->
-  <div id="leftPanel">
-
-    <div class="panel">
-      <b>排行榜</b>
-      <div id="rankList"></div>
+  <div id="left">
+    <div id="rankBox" class="panel">
+      <h3>排行榜</h3>
+      <div id="rankList">暂无记录</div>
     </div>
 
-    <div class="panel" id="nextBox">
-      <b>下一个方块</b>
-      <canvas id="nextCanvas" width="80" height="80"></canvas>
-    </div>
+    <div id="controlBox" class="panel">
+      <div>
+        <b>下一个方块</b>
+        <canvas id="nextCanvas" width="80" height="80"></canvas>
+      </div>
 
-    <div class="panel">
       <select id="difficulty">
         <option value="800">简单</option>
         <option value="500">普通</option>
         <option value="300">困难</option>
       </select>
+
       <button onclick="startGame()">开始</button>
       <button onclick="pauseGame()">暂停</button>
     </div>
-
   </div>
 
   <!-- 右侧 -->
-  <div id="gameArea">
-    <canvas id="gameCanvas"></canvas>
+  <div id="right">
+    <div id="gameWrap">
+      <canvas id="gameCanvas"></canvas>
+    </div>
 
     <div id="controls">
       <div class="ctrl" onclick="move(-1,0)">⬅</div>
@@ -152,103 +153,105 @@ button:active { background: #3399ff; }
 </div>
 
 <script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-const COLS=10, ROWS=20;
-let blockSize;
+const canvas=document.getElementById("gameCanvas");
+const ctx=canvas.getContext("2d");
+const COLS=10,ROWS=20;
+let size;
 
-function resizeCanvas(){
-  const w = canvas.clientWidth;
-  canvas.width = w;
-  canvas.height = w * 2;
-  blockSize = canvas.width / COLS;
+function resize(){
+  const w=canvas.clientWidth;
+  canvas.width=w;
+  canvas.height=w*2;
+  size=canvas.width/COLS;
 }
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
+window.addEventListener("resize",resize);
+resize();
 
-/* === 俄罗斯方块核心（精简稳定版） === */
-const shapes = [
+const shapes=[
  [[1,1,1,1]],
  [[1,1],[1,1]],
  [[0,1,0],[1,1,1]],
  [[1,0,0],[1,1,1]],
  [[0,0,1],[1,1,1]],
 ];
-let board = Array.from({length:ROWS},()=>Array(COLS).fill(0));
-let cur,next;
-let x=3,y=0,score=0,loop=null,paused=false;
+
+let board,cur,next,x,y,loop,paused=false;
+
+function reset(){
+  board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  next=null;
+  newPiece();
+}
 
 function newPiece(){
-  cur = next || shapes[Math.random()*shapes.length|0];
-  next = shapes[Math.random()*shapes.length|0];
+  cur=next||rand();
+  next=rand();
   x=3;y=0;
   drawNext();
 }
+
+function rand(){return shapes[Math.random()*shapes.length|0];}
 
 function draw(){
   ctx.fillStyle="#222";
   ctx.fillRect(0,0,canvas.width,canvas.height);
   board.forEach((r,yy)=>r.forEach((v,xx)=>{
-    if(v){ drawBlock(xx,yy,"#4db8ff"); }
+    if(v) block(xx,yy,"#4db8ff");
   }));
   cur.forEach((r,yy)=>r.forEach((v,xx)=>{
-    if(v) drawBlock(x+xx,y+yy,"#ff6666");
+    if(v) block(x+xx,y+yy,"#ff6666");
   }));
 }
 
-function drawBlock(xx,yy,color){
-  ctx.fillStyle=color;
-  ctx.fillRect(xx*blockSize,yy*blockSize,blockSize-1,blockSize-1);
-}
-
-function move(dx,dy){
-  if(collide(x+dx,y+dy)) return;
-  x+=dx;y+=dy;
-  draw();
-}
-
-function rotate(){
-  const r=cur[0].map((_,i)=>cur.map(r=>r[i]).reverse());
-  const old=cur;
-  cur=r;
-  if(collide(x,y)) cur=old;
-  draw();
+function block(xx,yy,c){
+  ctx.fillStyle=c;
+  ctx.fillRect(xx*size,yy*size,size-1,size-1);
 }
 
 function collide(nx,ny){
   return cur.some((r,yy)=>r.some((v,xx)=>{
-    if(!v) return false;
+    if(!v)return false;
     let px=nx+xx,py=ny+yy;
     return px<0||px>=COLS||py>=ROWS||board[py]?.[px];
   }));
 }
 
+function move(dx,dy){
+  if(!collide(x+dx,y+dy)){x+=dx;y+=dy;draw();}
+}
+
+function rotate(){
+  const r=cur[0].map((_,i)=>cur.map(r=>r[i]).reverse());
+  const o=cur;cur=r;
+  if(collide(x,y))cur=o;
+  draw();
+}
+
 function drop(){
-  if(!collide(x,y+1)){ y++; }
+  if(!collide(x,y+1))y++;
   else{
     cur.forEach((r,yy)=>r.forEach((v,xx)=>{
-      if(v) board[y+yy][x+xx]=1;
+      if(v)board[y+yy][x+xx]=1;
     }));
-    clearLines();
+    clear();
     newPiece();
   }
   draw();
 }
 
-function clearLines(){
+function clear(){
   board=board.filter(r=>r.some(v=>!v));
-  while(board.length<ROWS) board.unshift(Array(COLS).fill(0));
+  while(board.length<ROWS)board.unshift(Array(COLS).fill(0));
 }
 
 function startGame(){
-  if(loop) clearInterval(loop);
-  board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
-  newPiece();
+  clearInterval(loop);
+  reset();
   paused=false;
-  loop=setInterval(()=>{ if(!paused) drop(); },+difficulty.value);
+  loop=setInterval(()=>{if(!paused)drop();},difficulty.value);
 }
 
-function pauseGame(){ paused=!paused; }
+function pauseGame(){paused=!paused;}
 
 function drawNext(){
   const n=document.getElementById("nextCanvas");
