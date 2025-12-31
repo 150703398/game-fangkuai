@@ -3,54 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>卡通俄罗斯方块</title>
+<title>竞技级俄罗斯方块</title>
 
 <style>
 *{box-sizing:border-box;font-family:"Comic Sans MS","Arial Rounded MT Bold",sans-serif}
 body{
   margin:0;
   height:100vh;
+  display:flex;
+  flex-direction:column;
   background:#cceeff;
-  display:flex;
-  flex-direction:column;
 }
-
-#main{
-  flex:1;
-  display:flex;
-  width:100%;
-}
-
-#left{
-  width:30%;
-  background:#fff3cd;
-  display:flex;
-  flex-direction:column;
-}
-
-.panel{
-  background:#fff;
-  border-radius:10px;
-  padding:6px;
-  margin:6px;
-  text-align:center;
-}
-
-#rankBox{flex:1}
+#main{flex:1;display:flex}
+#left{width:30%;background:#fff3cd;display:flex;flex-direction:column}
+.panel{margin:6px;padding:6px;border-radius:10px;background:#fff;text-align:center}
+#rankBox{flex:1;font-size:12px}
 #controlBox{flex:1;display:flex;flex-direction:column;gap:8px}
-
-#nextCanvas{
-  width:100%;
-  aspect-ratio:1/1;
-  background:#333;
-  border-radius:8px;
-}
-
-#right{
-  width:70%;
-  padding:6px;
-}
-
+#nextCanvas{width:100%;aspect-ratio:1/1;background:#333;border-radius:8px}
+#right{width:70%;padding:6px}
 #gameCanvas{
   width:100%;
   height:100%;
@@ -59,31 +29,24 @@ body{
   border-radius:14px;
   touch-action:none;
 }
-
 #controls{
   height:90px;
   width:100vw;
   display:flex;
   background:#b3e0ff;
 }
-
 .ctrl{
-  flex:1;
-  margin:6px;
-  border-radius:14px;
+  flex:1;margin:6px;
   background:#ffb84d;
+  border-radius:14px;
   font-size:22px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   user-select:none;
 }
 .ctrl:active{background:#ff9f1a}
-
 button,select{
   width:100%;
   padding:6px;
-  font-size:13px;
   border:none;
   border-radius:8px;
   background:#4db8ff;
@@ -97,8 +60,8 @@ button,select{
 <div id="main">
   <div id="left">
     <div id="rankBox" class="panel">
-      <h3>排行榜</h3>
-      <div id="rankList">暂无记录</div>
+      <b>排行榜</b><br>
+      <span id="rankList">暂无</span>
     </div>
 
     <div id="controlBox" class="panel">
@@ -106,13 +69,11 @@ button,select{
         <b>下一个方块</b>
         <canvas id="nextCanvas" width="80" height="80"></canvas>
       </div>
-
       <select id="difficulty">
         <option value="800">简单</option>
         <option value="500">普通</option>
         <option value="300">困难</option>
       </select>
-
       <button onclick="startGame()">开始</button>
       <button onclick="pauseGame()">暂停</button>
     </div>
@@ -131,21 +92,24 @@ button,select{
 </div>
 
 <script>
-const canvas=document.getElementById("gameCanvas");
-const ctx=canvas.getContext("2d");
+/* ===== 基础参数 ===== */
 const COLS=10,ROWS=20;
-let size;
+const DAS_TIME=200,ARR_TIME=50;
+const LOCK_DELAY=500;
 
+/* ===== Canvas ===== */
+const canvas=gameCanvas,ctx=canvas.getContext("2d");
+let size;
 function resize(){
   const w=canvas.clientWidth;
   canvas.width=w;
   canvas.height=w*2;
-  size=canvas.width/COLS;
+  size=w/COLS;
 }
-window.addEventListener("resize",resize);
-resize();
+window.onresize=resize;resize();
 
-const shapes=[
+/* ===== 方块 ===== */
+const SHAPES=[
  [[1,1,1,1]],
  [[1,1],[1,1]],
  [[0,1,0],[1,1,1]],
@@ -153,26 +117,52 @@ const shapes=[
  [[0,0,1],[1,1,1]],
 ];
 
-let board,cur,next,x,y,loop,paused=false;
+let board,cur,next,x,y,paused=false;
+let dropTimer,lockTimer;
 
-function reset(){
+/* ===== 初始化 ===== */
+function startGame(){
+  clearInterval(dropTimer);
   board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
-  next=null;
-  newPiece();
+  next=null;newPiece();
+  paused=false;
+  dropTimer=setInterval(drop, difficulty.value);
 }
+function pauseGame(){paused=!paused}
 
+/* ===== 生成方块 ===== */
 function newPiece(){
   cur=next||rand();
   next=rand();
   x=3;y=0;
   drawNext();
 }
+function rand(){return SHAPES[Math.random()*SHAPES.length|0];}
 
-function rand(){return shapes[Math.random()*shapes.length|0];}
+/* ===== 碰撞 ===== */
+function collide(nx,ny,shape=cur){
+  return shape.some((r,yy)=>r.some((v,xx)=>{
+    if(!v)return false;
+    let px=nx+xx,py=ny+yy;
+    return px<0||px>=COLS||py>=ROWS||board[py]?.[px];
+  }));
+}
 
+/* ===== 绘制 ===== */
 function draw(){
   ctx.fillStyle="#222";
   ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // 幽灵方块
+  let gy=y;
+  while(!collide(x,gy+1))gy++;
+  cur.forEach((r,yy)=>r.forEach((v,xx)=>{
+    if(v){
+      ctx.fillStyle="rgba(255,255,255,0.3)";
+      ctx.fillRect((x+xx)*size,(gy+yy)*size,size-1,size-1);
+    }
+  }));
+
   board.forEach((r,yy)=>r.forEach((v,xx)=>{
     if(v) block(xx,yy,"#4db8ff");
   }));
@@ -180,63 +170,69 @@ function draw(){
     if(v) block(x+xx,y+yy,"#ff6666");
   }));
 }
-
 function block(xx,yy,c){
   ctx.fillStyle=c;
   ctx.fillRect(xx*size,yy*size,size-1,size-1);
 }
 
-function collide(nx,ny){
-  return cur.some((r,yy)=>r.some((v,xx)=>{
-    if(!v)return false;
-    let px=nx+xx,py=ny+yy;
-    return px<0||px>=COLS||py>=ROWS||board[py]?.[px];
-  }));
-}
-
+/* ===== 移动 ===== */
 function move(dx,dy){
-  if(!paused && !collide(x+dx,y+dy)){x+=dx;y+=dy;draw();}
+  if(paused)return;
+  if(!collide(x+dx,y+dy)){
+    x+=dx;y+=dy;
+    clearTimeout(lockTimer);
+    draw();
+  }else if(dy===1){
+    startLock();
+  }
 }
 
+/* ===== 旋转（SRS Lite） ===== */
 function rotate(){
   if(paused)return;
   const r=cur[0].map((_,i)=>cur.map(r=>r[i]).reverse());
-  const o=cur;cur=r;
-  if(collide(x,y))cur=o;
-  draw();
-}
-
-function drop(){
-  if(paused)return;
-  if(!collide(x,y+1))y++;
-  else{
-    cur.forEach((r,yy)=>r.forEach((v,xx)=>{
-      if(v)board[y+yy][x+xx]=1;
-    }));
-    clear();
-    newPiece();
+  for(let dx of [0,-1,1,-2,2]){
+    if(!collide(x+dx,y,r)){
+      cur=r;x+=dx;draw();return;
+    }
   }
+}
+
+/* ===== 下落 ===== */
+function drop(){
+  move(0,1);
+}
+function hardDrop(){
+  if(paused)return;
+  while(!collide(x,y+1))y++;
+  lock();
+}
+
+/* ===== 锁定 ===== */
+function startLock(){
+  if(lockTimer)return;
+  lockTimer=setTimeout(lock,LOCK_DELAY);
+}
+function lock(){
+  clearTimeout(lockTimer);
+  cur.forEach((r,yy)=>r.forEach((v,xx)=>{
+    if(v)board[y+yy][x+xx]=1;
+  }));
+  clearLines();
+  newPiece();
   draw();
 }
 
-function clear(){
+/* ===== 消行 ===== */
+function clearLines(){
   board=board.filter(r=>r.some(v=>!v));
   while(board.length<ROWS)board.unshift(Array(COLS).fill(0));
 }
 
-function startGame(){
-  clearInterval(loop);
-  reset();
-  paused=false;
-  loop=setInterval(drop,difficulty.value);
-}
-
-function pauseGame(){paused=!paused;}
-
+/* ===== 预览 ===== */
 function drawNext(){
-  const n=document.getElementById("nextCanvas");
-  const c=n.getContext("2d");
-  c.clearRect(0,0,n.width,n.height);
+  const c=nextCanvas.getContext("2d");
+  c.clearRect(0,0,80,80);
   next.forEach((r,y)=>r.forEach((v,x)=>{
     if(v){
       c.fillStyle="#4db8ff";
@@ -245,38 +241,42 @@ function drawNext(){
   }));
 }
 
-/* ===== 手势控制 ===== */
+/* ===== 手势 ===== */
 let sx,sy;
-canvas.addEventListener("touchstart",e=>{
-  const t=e.touches[0];
-  sx=t.clientX; sy=t.clientY;
-});
-canvas.addEventListener("touchend",e=>{
+canvas.ontouchstart=e=>{
+  sx=e.touches[0].clientX;
+  sy=e.touches[0].clientY;
+};
+canvas.ontouchend=e=>{
   const dx=e.changedTouches[0].clientX-sx;
   const dy=e.changedTouches[0].clientY-sy;
   if(Math.abs(dx)>Math.abs(dy)){
-    if(dx>30) move(1,0);
-    else if(dx<-30) move(-1,0);
+    if(dx>30)move(1,0);
+    else if(dx<-30)move(-1,0);
   }else{
-    if(dy>30) move(0,1);
-    else if(dy<-30) rotate();
+    if(dy>30)move(0,1);
+    else if(dy<-30)hardDrop();
   }
-});
+};
 
-/* ===== 长按方向键 ===== */
-function bindHold(btn,fn){
-  let t;
-  btn.onmousedown=btn.ontouchstart=()=>{
-    fn();
-    t=setInterval(fn,120);
-  };
-  btn.onmouseup=btn.onmouseleave=btn.ontouchend=()=>clearInterval(t);
+/* ===== DAS ===== */
+let dasTimer,arrTimer;
+function stopMove(){
+  clearTimeout(dasTimer);
+  clearInterval(arrTimer);
 }
-bindHold(btnLeft,()=>move(-1,0));
-bindHold(btnRight,()=>move(1,0));
-bindHold(btnDown,()=>move(0,1));
+function startH(dir){
+  stopMove();
+  move(dir,0);
+  dasTimer=setTimeout(()=>{
+    arrTimer=setInterval(()=>move(dir,0),ARR_TIME);
+  },DAS_TIME);
+}
+btnLeft.onmousedown=btnLeft.ontouchstart=e=>{e.preventDefault();startH(-1)};
+btnRight.onmousedown=btnRight.ontouchstart=e=>{e.preventDefault();startH(1)};
+btnDown.onmousedown=btnDown.ontouchstart=e=>{e.preventDefault();arrTimer=setInterval(()=>move(0,1),80)};
+["mouseup","mouseleave","touchend","touchcancel"].forEach(ev=>document.addEventListener(ev,stopMove));
 btnRotate.onclick=rotate;
 </script>
-
 </body>
 </html>
