@@ -205,6 +205,7 @@ document.getElementById("pause").onclick=()=>{state=state==="playing"?"paused":"
 
 // ==================== 键盘输入 ====================
 document.addEventListener("keydown",e=>{
+ e.preventDefault();
  if(e.key==="ArrowLeft") inputState.left=true;
  if(e.key==="ArrowRight") inputState.right=true;
  if(e.key==="ArrowDown") inputState.down=true;
@@ -217,11 +218,17 @@ document.addEventListener("keyup",e=>{
 });
 
 // ==================== 屏幕按钮 ====================
-document.getElementById("leftBtn").addEventListener("mousedown",()=>inputState.left=true);
-document.getElementById("rightBtn").addEventListener("mousedown",()=>inputState.right=true);
-document.getElementById("downBtn").addEventListener("mousedown",()=>inputState.down=true);
+["leftBtn","rightBtn","downBtn"].forEach(id=>{
+ let dir=id==="leftBtn"? "left": id==="rightBtn"? "right":"down";
+ const el=document.getElementById(id);
+ el.addEventListener("pointerdown",()=>inputState[dir]=true);
+ el.addEventListener("pointerup",()=>inputState[dir]=false);
+ el.addEventListener("pointerleave",()=>inputState[dir]=false);
+});
 document.getElementById("rotBtn").addEventListener("click",rotate);
-document.addEventListener("mouseup",()=>{inputState.left=false;inputState.right=false;inputState.down=false;});
+
+// ==================== 点击方块旋转 ====================
+canvas.addEventListener("click",rotate);
 
 // ==================== 触屏滑动 ====================
 let startX=0,startY=0;
