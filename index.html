@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>终极职业竞技版俄罗斯方块</title>
+<title>职业竞技级俄罗斯方块</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:sans-serif;background:#222;color:#fff;display:flex;flex-direction:column;user-select:none;touch-action:none;}
@@ -130,7 +130,7 @@ function checkTSpin(){
 }
 
 // ==================== 主循环 ====================
-let inputState={left:false,right:false,down:false};
+let inputState={left:false,right:false,down:false,up:false};
 let DAS_L=0,ARR_L=0,DAS_R=0,ARR_R=0;
 const DAS=170,ARR=50;
 function loop(t){
@@ -139,19 +139,13 @@ function loop(t){
  dropTimer+=dt;
 
  // 左移
- if(inputState.left){
-   DAS_L+=dt;
-   if(DAS_L>=DAS){ARR_L+=dt; while(ARR_L>=ARR){move(-1);ARR_L-=ARR;}}
- }else{DAS_L=0;ARR_L=0;}
-
+ if(inputState.left){ DAS_L+=dt; if(DAS_L>=DAS){ARR_L+=dt; while(ARR_L>=ARR){move(-1);ARR_L-=ARR;}} }else{DAS_L=0;ARR_L=0;}
  // 右移
- if(inputState.right){
-   DAS_R+=dt;
-   if(DAS_R>=DAS){ARR_R+=dt; while(ARR_R>=ARR){move(1);ARR_R-=ARR;}}
- }else{DAS_R=0;ARR_R=0;}
-
+ if(inputState.right){ DAS_R+=dt; if(DAS_R>=DAS){ARR_R+=dt; while(ARR_R>=ARR){move(1);ARR_R-=ARR;}} }else{DAS_R=0;ARR_R=0;}
  // 下落
  if(inputState.down){softDrop();}
+ // 向上旋转
+ if(inputState.up){rotate();inputState.up=false;}
 
  if(dropTimer>=dropInterval){
    if(canMove(cur.x,cur.y+1,cur.shape)){cur.y++;lockTimer=0;}else{lockTimer+=dropTimer;if(lockTimer>=LOCK_DELAY) lock();}
@@ -173,13 +167,9 @@ function lock(){
 // ==================== 消行 ====================
 function clearLines(){
  let lines=0;
- board=board.filter(r=>{
-  if(r.every(v=>v)){lines++;return false;}
-  return true;
- });
+ board=board.filter(r=>{if(r.every(v=>v)){lines++;return false;} return true;});
  while(board.length<ROWS) board.unshift(Array(COLS).fill(0));
- if(lines>0){combo++;score+=lines*100*combo; if(tSpin) score+=400;}
- else combo=0;
+ if(lines>0){combo++;score+=lines*100*combo; if(tSpin) score+=400;} else combo=0;
  updateRank();
 }
 
@@ -209,12 +199,13 @@ document.addEventListener("keydown",e=>{
  if(e.key==="ArrowLeft") inputState.left=true;
  if(e.key==="ArrowRight") inputState.right=true;
  if(e.key==="ArrowDown") inputState.down=true;
- if(e.key==="ArrowUp") rotate();
+ if(e.key==="ArrowUp") inputState.up=true;
 });
 document.addEventListener("keyup",e=>{
  if(e.key==="ArrowLeft") inputState.left=false;
  if(e.key==="ArrowRight") inputState.right=false;
  if(e.key==="ArrowDown") inputState.down=false;
+ if(e.key==="ArrowUp") inputState.up=false;
 });
 
 // ==================== 屏幕按钮 ====================
@@ -225,10 +216,9 @@ document.addEventListener("keyup",e=>{
  el.addEventListener("pointerup",()=>inputState[dir]=false);
  el.addEventListener("pointerleave",()=>inputState[dir]=false);
 });
-document.getElementById("rotBtn").addEventListener("click",rotate);
-
-// ==================== 点击方块旋转 ====================
-canvas.addEventListener("click",rotate);
+// rotBtn 改为向上旋转
+document.getElementById("rotBtn").addEventListener("pointerdown",()=>inputState.up=true);
+document.getElementById("rotBtn").addEventListener("pointerup",()=>inputState.up=false);
 
 // ==================== 触屏滑动 ====================
 let startX=0,startY=0;
@@ -238,9 +228,9 @@ canvas.addEventListener("touchmove",e=>{
  const t=e.touches[0];
  let dx=t.clientX-startX,dy=t.clientY-startY;
  if(Math.abs(dx)>BLOCK){dx>0?move(1):move(-1);startX=t.clientX;}
- if(dy>BLOCK){softDrop();startY=t.clientY;}
+ if(dy>BLOCK){dy<0?inputState.up=true:softDrop();startY=t.clientY;}
 });
-canvas.addEventListener("touchend",e=>{});
+canvas.addEventListener("touchend",e=>{inputState.up=false;});
 
 // ==================== 排行榜 ====================
 function updateRank(){document.getElementById("rank").innerText="分数:"+score+"  连击:"+combo+(tSpin?"  T-Spin":"");}
