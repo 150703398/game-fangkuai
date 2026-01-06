@@ -14,9 +14,7 @@ h3{margin:4px 0;font-size:14px;text-align:center;}
 #gameWrap{width:100%;height:100%;display:flex;justify-content:center;align-items:center;}
 canvas{background:#000;border-radius:10px;display:block;width:100%;height:auto;}
 #level,button{width:100%;padding:6px;margin:3px 0;border-radius:8px;border:none;font-size:14px;}
-#controls{position:absolute;bottom:0;width:100%;display:flex;justify-content:space-around;padding:4px;background:rgba(0,0,0,0.2);}
-.ctrl{flex:1;margin:2px;padding:14px;font-size:18px;border-radius:10px;background:#555;color:#fff;text-align:center;}
-.ctrl:active{background:#888;}
+#instructions{margin-top:8px;font-size:12px;line-height:1.4;color:#ccc;}
 </style>
 </head>
 <body>
@@ -32,6 +30,11 @@ canvas{background:#000;border-radius:10px;display:block;width:100%;height:auto;}
       </select>
       <button id="start">开始</button>
       <button id="pause">暂停</button>
+      <div id="instructions">
+        操作说明：<br>
+        PC键盘：← → 移动，↓软下落，上旋转<br>
+        手机滑动：左右滑动→移动，上滑→旋转，下滑→软下落
+      </div>
     </div>
   </div>
   <div id="right">
@@ -39,13 +42,6 @@ canvas{background:#000;border-radius:10px;display:block;width:100%;height:auto;}
       <canvas id="game" width="300" height="600"></canvas>
     </div>
   </div>
-</div>
-
-<div id="controls">
-  <div class="ctrl" id="leftBtn">◀</div>
-  <div class="ctrl" id="downBtn">▼</div>
-  <div class="ctrl" id="upBtn">⟳</div>
-  <div class="ctrl" id="rightBtn">▶</div>
 </div>
 
 <script>
@@ -199,7 +195,7 @@ document.addEventListener("keyup",e=>{
  if(e.key==="ArrowUp") inputState.up=false;
 });
 
-// ==================== Canvas 内虚拟按键 + 滑动 ====================
+// ==================== Canvas 内滑动 ====================
 let startX=0,startY=0;
 canvas.addEventListener("touchstart",e=>{const t=e.touches[0];startX=t.clientX;startY=t.clientY;},{passive:false});
 canvas.addEventListener("touchmove",e=>{
