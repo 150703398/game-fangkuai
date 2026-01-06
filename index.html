@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>终极职业竞技版俄罗斯方块</title>
+<title>俄罗斯方块</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:sans-serif;background:#222;color:#fff;display:flex;flex-direction:column;user-select:none;touch-action:none;}
@@ -49,7 +49,7 @@ button,select{width:100%;padding:6px;margin:3px 0;border-radius:8px;border:none;
 </div>
 
 <script>
-// ==================== 基本参数 ====================
+// ==================== 参数 ====================
 const COLS=10,ROWS=20,BLOCK=30;
 const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
 const nextC=document.getElementById("next"),nctx=nextC.getContext("2d");
@@ -74,7 +74,7 @@ function reset(){
  board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
  score=0;combo=0;
  cur=getNext(); next=getNext();
- dropTimer=0;lockTimer=0;
+ dropTimer=0;lockTimer=0; tSpin=false;
  state="playing";
  updateRank();
 }
@@ -111,8 +111,7 @@ function rotate(){
    if(canMove(cur.x+k[0],cur.y+k[1],r)){
      cur.x+=k[0]; cur.y+=k[1]; cur.shape=r;
      cur.rot=(cur.rot+1)%4; lockTimer=0;
-     checkTSpin(); // T-Spin判定
-     return;
+     checkTSpin(); return;
    }
  }
 }
@@ -131,26 +130,33 @@ function checkTSpin(){
 
 // ==================== 主循环 ====================
 let inputState={left:false,right:false,down:false};
-let DAS=170,ARR=50,DAS_Timer=0,ARR_Timer=0;
+let DAS_L=0,ARR_L=0,DAS_R=0,ARR_R=0;
+const DAS=170,ARR=50;
 function loop(t){
  if(state!=="playing"){lastTime=t;requestAnimationFrame(loop);return;}
  let dt=t-lastTime;lastTime=t;
  dropTimer+=dt;
- // 横移处理
+
+ // 左移
  if(inputState.left){
-   DAS_Timer+=dt;
-   if(DAS_Timer>=DAS){ARR_Timer+=dt; while(ARR_Timer>=ARR){move(-1);ARR_Timer-=ARR;}}
- }
+   DAS_L+=dt;
+   if(DAS_L>=DAS){ARR_L+=dt; while(ARR_L>=ARR){move(-1);ARR_L-=ARR;}}
+ }else{DAS_L=0;ARR_L=0;}
+
+ // 右移
  if(inputState.right){
-   DAS_Timer+=dt;
-   if(DAS_Timer>=DAS){ARR_Timer+=dt; while(ARR_Timer>=ARR){move(1);ARR_Timer-=ARR;}}
- }
- // 软降
+   DAS_R+=dt;
+   if(DAS_R>=DAS){ARR_R+=dt; while(ARR_R>=ARR){move(1);ARR_R-=ARR;}}
+ }else{DAS_R=0;ARR_R=0;}
+
+ // 下落
  if(inputState.down){softDrop();}
+
  if(dropTimer>=dropInterval){
    if(canMove(cur.x,cur.y+1,cur.shape)){cur.y++;lockTimer=0;}else{lockTimer+=dropTimer;if(lockTimer>=LOCK_DELAY) lock();}
    dropTimer=0;
  }
+
  draw();
  requestAnimationFrame(loop);
 }
@@ -159,7 +165,7 @@ function loop(t){
 function lock(){
  cur.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v && cur.y+y>=0) board[cur.y+y][cur.x+x]=cur.k;}));
  clearLines();
- cur=next; next=getNext(); cur.rot=0; lockTimer=0; DAS_Timer=0; ARR_Timer=0; tSpin=false;
+ cur=next; next=getNext(); cur.rot=0; lockTimer=0; DAS_L=ARR_L=DAS_R=ARR_R=0; tSpin=false;
  if(!canMove(cur.x,cur.y,cur.shape)) state="gameover";
 }
 
@@ -187,17 +193,18 @@ function drawGhost(){let y=cur.y;while(canMove(cur.x,y+1,cur.shape))y++;ctx.glob
 function drawNext(){nctx.clearRect(0,0,80,80);next.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v){nctx.fillStyle=COLORS[next.k];nctx.fillRect(x*20,y*20,20,20);}}));}
 
 // ==================== 移动 ====================
-function move(dx){if(canMove(cur.x+dx,cur.y,cur.shape)){cur.x+=dx;lockTimer=0;DAS_Timer=0;ARR_Timer=0;}}
+function move(dx){if(canMove(cur.x+dx,cur.y,cur.shape)){cur.x+=dx;lockTimer=0;DAS_L=ARR_L=DAS_R=ARR_R=0;}}
+
 function softDrop(){if(canMove(cur.x,cur.y+1,cur.shape)){cur.y++;score++;}}
 
 // ==================== 按钮 ====================
 document.getElementById("start").onclick=()=>{dropInterval=+document.getElementById("level").value;reset();}
 document.getElementById("pause").onclick=()=>{state=state==="playing"?"paused":"playing";}
 
-// ==================== 长按输入 ====================
+// ==================== 键盘输入 ====================
 function keyDownHandler(e){
- if(e.key==="ArrowLeft"){inputState.left=true; DAS_Timer=0;ARR_Timer=0;}
- if(e.key==="ArrowRight"){inputState.right=true; DAS_Timer=0;ARR_Timer=0;}
+ if(e.key==="ArrowLeft") inputState.left=true;
+ if(e.key==="ArrowRight") inputState.right=true;
  if(e.key==="ArrowDown") inputState.down=true;
  if(e.key==="ArrowUp") rotate();
 }
@@ -209,7 +216,7 @@ function keyUpHandler(e){
 document.addEventListener("keydown",keyDownHandler);
 document.addEventListener("keyup",keyUpHandler);
 
-// ==================== 按钮点击 ====================
+// ==================== 屏幕按钮 ====================
 document.getElementById("leftBtn").onmousedown=()=>inputState.left=true;
 document.getElementById("rightBtn").onmousedown=()=>inputState.right=true;
 document.getElementById("downBtn").onmousedown=()=>inputState.down=true;
