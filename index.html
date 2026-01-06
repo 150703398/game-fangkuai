@@ -3,18 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>职业竞技俄罗斯方块</title>
+<title>卡通职业竞技俄罗斯方块</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;width:100%;font-family:sans-serif;background:#222;color:#fff;user-select:none;touch-action:none;overflow:hidden;}
+html,body{height:100%;width:100%;font-family:sans-serif;background:#ffebcc;color:#222;user-select:none;touch-action:none;overflow:hidden;}
 #main{display:flex;height:100%;width:100%;}
 #left{width:30%;padding:8px;display:flex;flex-direction:column;gap:8px;}
-.panel{background:#333;border-radius:10px;padding:8px;flex-shrink:0;}
-h3{margin:4px 0;font-size:14px;text-align:center;}
+.panel{background:#ffe4a3;border-radius:12px;padding:8px;flex-shrink:0;box-shadow:0 0 8px rgba(0,0,0,0.2);}
+h3{margin:4px 0;font-size:14px;text-align:center;color:#333;}
 #gameWrap{width:100%;height:100%;display:flex;justify-content:center;align-items:center;}
-canvas{background:#000;border-radius:10px;display:block;width:100%;height:auto;}
-#level,button{width:100%;padding:6px;margin:3px 0;border-radius:8px;border:none;font-size:14px;}
-#instructions{position:absolute;bottom:0;width:100%;background:rgba(0,0,0,0.5);padding:6px;text-align:center;font-size:12px;line-height:1.4;color:#ccc;}
+canvas{background:#fff8e7;border-radius:12px;display:block;width:100%;height:auto;}
+#level,button{width:100%;padding:6px;margin:3px 0;border-radius:8px;border:none;font-size:14px;background:#ffd966;color:#333;cursor:pointer;}
+#level option{background:#fff;}
+#instructions{position:absolute;bottom:0;width:100%;background:rgba(255,235,204,0.9);padding:6px;text-align:center;font-size:12px;line-height:1.4;color:#333;box-shadow:0 -2px 6px rgba(0,0,0,0.2);}
 </style>
 </head>
 <body>
@@ -49,7 +50,7 @@ const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
 const nextC=document.getElementById("next"),nctx=nextC.getContext("2d");
 let board=[],cur,next,bag=[],state="idle",score=0,combo=0,dropInterval=500,dropTimer=0,lockTimer=0,LOCK_DELAY=500,lastTime=0;
 const SHAPES={I:[[1,1,1,1]],O:[[1,1],[1,1]],T:[[0,1,0],[1,1,1]],S:[[0,1,1],[1,1,0]],Z:[[1,1,0],[0,1,1]],J:[[1,0,0],[1,1,1]],L:[[0,0,1],[1,1,1]]};
-const COLORS={I:"#4df",O:"#fd4",T:"#d5f",S:"#4f4",Z:"#f44",J:"#44f",L:"#fa4"};
+const COLORS={I:"#4df",O:"#ffd700",T:"#d5f",S:"#4f4",Z:"#f44",J:"#44f",L:"#fa4"};
 
 // ==================== 7-Bag ====================
 function newBag(){ bag=Object.keys(SHAPES).sort(()=>Math.random()-0.5);}
@@ -166,7 +167,25 @@ function draw(){
 }
 function drawPiece(p){ctx.fillStyle=COLORS[p.k];p.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v)ctx.fillRect((p.x+x)*BLOCK,(p.y+y)*BLOCK,BLOCK,BLOCK);}))}
 function drawGhost(){let y=cur.y;while(canMove(cur.x,y+1,cur.shape))y++;ctx.globalAlpha=0.3;drawPiece({...cur,y});ctx.globalAlpha=1;}
-function drawNext(){nctx.clearRect(0,0,80,80);next.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v){nctx.fillStyle=COLORS[next.k];nctx.fillRect(x*20,y*20,20,20);}}));}
+
+// ==================== 下一个方块预览 ====================
+function drawNext(){
+    nctx.clearRect(0,0,nextC.width,nextC.height);
+    const shape = next.shape;
+    const rows = shape.length;
+    const cols = shape[0].length;
+    const scale = Math.min(nextC.width/cols, nextC.height/rows);
+    const offsetX = (nextC.width - cols*scale)/2;
+    const offsetY = (nextC.height - rows*scale)/2;
+    shape.forEach((r,y)=>{
+        r.forEach((v,x)=>{
+            if(v){
+                nctx.fillStyle = COLORS[next.k];
+                nctx.fillRect(offsetX + x*scale, offsetY + y*scale, scale, scale);
+            }
+        })
+    })
+}
 
 // ==================== 移动 ====================
 function move(dx){if(canMove(cur.x+dx,cur.y,cur.shape)){cur.x+=dx;lockTimer=0;}}
