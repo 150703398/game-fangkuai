@@ -1,202 +1,309 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>俄罗斯方块</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Cartoon Tetris Pro</title>
 
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{
-  width:100%;height:100%;
-  background:#ffefc7;
-  font-family:sans-serif;
-  overflow:hidden;
-  user-select:none;
-  touch-action:none;
+:root{
+  --bg:#6ec6ff;
+  --panel:#ffffff;
+  --border:#222;
+  --shadow:rgba(0,0,0,.25);
 }
-#app{display:flex;height:calc(100% - 44px)}
-#left{width:30%;padding:8px;display:flex;flex-direction:column;gap:8px}
-#right{width:70%;display:flex;justify-content:center;align-items:center}
-.panel{
-  background:#ffe39a;
-  border-radius:14px;
+*{box-sizing:border-box;touch-action:none;}
+body{
+  margin:0;
+  background:linear-gradient(#6ec6ff,#b2ebf2);
+  font-family:"Comic Sans MS","Arial Rounded MT Bold",system-ui;
+  display:flex;
+  justify-content:center;
+}
+#app{
+  width:100%;
+  max-width:520px;
   padding:8px;
-  box-shadow:0 4px 8px rgba(0,0,0,.15)
 }
-h3{text-align:center;font-size:14px;margin-bottom:6px}
-#game{
-  width:100%;height:auto;max-height:100%;
-  background:#fff7e6;
-  border-radius:16px
+.panel{
+  background:var(--panel);
+  border:4px solid var(--border);
+  border-radius:16px;
+  box-shadow:0 6px 0 var(--shadow);
+  padding:8px;
+  margin-bottom:8px;
 }
-#hint{
-  height:44px;line-height:44px;
-  background:#ffe39a;
-  text-align:center;font-size:13px;
-  box-shadow:0 -2px 6px rgba(0,0,0,.2)
+#top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
-button,select{
-  width:100%;padding:6px;margin-top:4px;
-  border:none;border-radius:10px;
-  background:#ffd45c;font-size:14px
+button{
+  border:3px solid #222;
+  border-radius:12px;
+  background:#ffeb3b;
+  font-size:16px;
+  padding:6px 12px;
+  cursor:pointer;
+  box-shadow:0 4px 0 #c6b800;
+}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #c6b800;}
+#gameWrap{
+  display:flex;
+  gap:8px;
+}
+#canvasWrap{
+  flex:1;
+  aspect-ratio:10/20;
+}
+canvas{
+  width:100%;
+  height:100%;
+  background:#111;
+  border-radius:12px;
+}
+#side{
+  width:110px;
+}
+#next{
+  width:100%;
+  aspect-ratio:1/1;
+  background:#222;
+  border-radius:12px;
+}
+#info{
+  font-size:14px;
+  text-align:center;
+}
+#help{
+  text-align:center;
+  font-size:14px;
 }
 </style>
 </head>
 
 <body>
-
 <div id="app">
-  <div id="left">
-    <div class="panel">
-      <h3>云端排行榜 Top10</h3>
-      <div id="rank">加载中…</div>
-    </div>
-    <div class="panel">
-      <h3>下一个方块</h3>
-      <canvas id="next" width="90" height="90"></canvas>
-    </div>
-    <div class="panel">
-      <select id="level">
-        <option value="800">简单</option>
-        <option value="500" selected>普通</option>
-        <option value="300">困难</option>
-      </select>
-      <button id="start">开始</button>
-      <button id="pause">暂停</button>
-    </div>
-  </div>
 
-  <div id="right">
-    <canvas id="game" width="300" height="600"></canvas>
+<div id="top" class="panel">
+  <button id="start">▶ 开始</button>
+  <div>
+    分数：<span id="score">0</span><br>
+    难度：
+    <select id="difficulty">
+      <option value="easy">简单</option>
+      <option value="normal" selected>普通</option>
+      <option value="hard">困难</option>
+    </select>
   </div>
 </div>
 
-<div id="hint">
+<div id="gameWrap">
+  <div id="canvasWrap" class="panel">
+    <canvas id="game" width="300" height="600"></canvas>
+  </div>
+  <div id="side">
+    <div class="panel">
+      <div style="text-align:center;font-weight:bold">NEXT</div>
+      <canvas id="next" width="100" height="100"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="help" class="panel">
 操作说明：向上：旋转，向左：左移，向右：右移，向下：下移
 </div>
 
-<script>
-/* ====== 修改这里：你的 Workers 地址 ====== */
-const API="https://fktop.wuyuping7262.workers.dev/";
+</div>
 
-/* ====== 基础 ====== */
-const COLS=10,ROWS=20,S=30;
-const canvas=game,ctx=canvas.getContext("2d");
-const nctx=next.getContext("2d");
-const COLORS={I:"#5ddcff",O:"#ffd966",T:"#d36bff",S:"#5cff8a",Z:"#ff6b6b",J:"#5c7cff",L:"#ffa94d"};
-const SHAPES={
- I:[[1,1,1,1]],O:[[1,1],[1,1]],
- T:[[0,1,0],[1,1,1]],
- S:[[0,1,1],[1,1,0]],
- Z:[[1,1,0],[0,1,1]],
- J:[[1,0,0],[1,1,1]],
- L:[[0,0,1],[1,1,1]]
+<script>
+/* =================== 配置 =================== */
+const COLS=10,ROWS=20;
+const BLOCK=30;
+const CF_API_URL="https://fktop.wuyuping7262.workers.dev/"; // ← 改这里
+
+/* =================== 画布 =================== */
+const cvs=document.getElementById("game");
+const ctx=cvs.getContext("2d");
+const nextCvs=document.getElementById("next");
+const nctx=nextCvs.getContext("2d");
+
+/* =================== 方块数据 =================== */
+const COLORS={
+ I:"#00e5ff",J:"#2979ff",L:"#ff9100",
+ O:"#ffd600",S:"#00e676",T:"#d500f9",Z:"#ff1744"
 };
 
-let board,cur,nextP,bag=[],state="idle";
-let score=0,drop=500,timer=0,last=0;
+/* 标准 SRS */
+const SHAPES={
+ I:[
+  [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  [[0,0,1,0],[0,0,1,0],[0,0,1,0],[0,0,1,0]]
+ ],
+ O:[
+  [[1,1],[1,1]]
+ ],
+ T:[
+  [[0,1,0],[1,1,1],[0,0,0]],
+  [[0,1,0],[0,1,1],[0,1,0]],
+  [[0,0,0],[1,1,1],[0,1,0]],
+  [[0,1,0],[1,1,0],[0,1,0]]
+ ],
+ J:[
+  [[1,0,0],[1,1,1],[0,0,0]],
+  [[0,1,1],[0,1,0],[0,1,0]],
+  [[0,0,0],[1,1,1],[0,0,1]],
+  [[0,1,0],[0,1,0],[1,1,0]]
+ ],
+ L:[
+  [[0,0,1],[1,1,1],[0,0,0]],
+  [[0,1,0],[0,1,0],[0,1,1]],
+  [[0,0,0],[1,1,1],[1,0,0]],
+  [[1,1,0],[0,1,0],[0,1,0]]
+ ],
+ S:[
+  [[0,1,1],[1,1,0],[0,0,0]],
+  [[0,1,0],[0,1,1],[0,0,1]]
+ ],
+ Z:[
+  [[1,1,0],[0,1,1],[0,0,0]],
+  [[0,0,1],[0,1,1],[0,1,0]]
+ ]
+};
 
-/* ====== 排行榜 ====== */
-async function loadRank(){
- const r=await fetch(API+"/score").then(r=>r.json());
- rank.innerHTML=r.map((v,i)=>`#${i+1} ${v.score}`).join("<br>");
-}
-async function submit(){
- await fetch(API+"/score",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({score})});
- loadRank();
-}
+/* =================== 游戏核心 =================== */
+let grid,cur,next,score=0,dropTimer=0,dropInterval=800,playing=false;
 
-/* ====== 游戏逻辑 ====== */
-const newBag=()=>bag=Object.keys(SHAPES).sort(()=>Math.random()-0.5);
-const nextPiece=()=>{if(!bag.length)newBag();let k=bag.pop();return{k,shape:SHAPES[k],x:3,y:0}};
-const can=(x,y,s)=>s.every((r,ry)=>r.every((v,rx)=>!v||(
- x+rx>=0&&x+rx<COLS&&y+ry<ROWS&&(y+ry<0||!board[y+ry][x+rx])
-)));
-
+/* =================== 初始化 =================== */
 function reset(){
- board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
- cur=nextPiece(); nextP=nextPiece();
- score=0; state="play";
+ grid=[...Array(ROWS)].map(()=>Array(COLS).fill(0));
+ cur=randomPiece();
+ next=randomPiece();
+ score=0;
+ updateScore();
 }
 
+/* =================== 工具 =================== */
+function randomPiece(){
+ const keys=Object.keys(SHAPES);
+ const k=keys[Math.random()*keys.length|0];
+ return {type:k,rot:0,x:3,y:0};
+}
+function collide(p,dx=0,dy=0,rot=p.rot){
+ const s=SHAPES[p.type][rot];
+ for(let y=0;y<s.length;y++)
+ for(let x=0;x<s[y].length;x++){
+  if(!s[y][x])continue;
+  let nx=p.x+x+dx, ny=p.y+y+dy;
+  if(nx<0||nx>=COLS||ny>=ROWS)return true;
+  if(ny>=0 && grid[ny][nx])return true;
+ }
+ return false;
+}
+
+/* =================== 控制 =================== */
+document.addEventListener("keydown",e=>{
+ if(!playing)return;
+ if(e.key==="ArrowLeft"&&!collide(cur,-1,0))cur.x--;
+ if(e.key==="ArrowRight"&&!collide(cur,1,0))cur.x++;
+ if(e.key==="ArrowDown")softDrop();
+ if(e.key==="ArrowUp")rotate();
+});
+
+let startY,startX;
+cvs.addEventListener("pointerdown",e=>{
+ startX=e.clientX; startY=e.clientY;
+});
+cvs.addEventListener("pointerup",e=>{
+ let dx=e.clientX-startX, dy=e.clientY-startY;
+ if(Math.abs(dx)>Math.abs(dy)){
+  if(dx>30&&!collide(cur,1,0))cur.x++;
+  if(dx<-30&&!collide(cur,-1,0))cur.x--;
+ }else{
+  if(dy>30)softDrop();
+  if(dy<-30)rotate();
+ }
+});
+
+/* =================== 行为 =================== */
 function rotate(){
- const s=cur.shape;
- const r=s[0].map((_,i)=>s.map(row=>row[i]).reverse());
- if(can(cur.x,cur.y,r))cur.shape=r;
+ let r=(cur.rot+1)%SHAPES[cur.type].length;
+ if(!collide(cur,0,0,r))cur.rot=r;
 }
-
+function softDrop(){
+ if(!collide(cur,0,1))cur.y++;
+}
 function lock(){
- cur.shape.forEach((r,y)=>r.forEach((v,x)=>{
-  if(v&&cur.y+y>=0)board[cur.y+y][cur.x+x]=cur.k;
+ const s=SHAPES[cur.type][cur.rot];
+ s.forEach((row,y)=>row.forEach((v,x)=>{
+  if(v && cur.y+y>=0)grid[cur.y+y][cur.x+x]=cur.type;
  }));
- board=board.filter(r=>!r.every(v=>v));
- while(board.length<ROWS)board.unshift(Array(COLS).fill(0));
- score+=100;
- cur=nextP; nextP=nextPiece();
- if(!can(cur.x,cur.y,cur.shape)){state="over";submit();}
+ clearLines();
+ cur=next; next=randomPiece();
+ if(collide(cur,0,0))playing=false;
+}
+function clearLines(){
+ for(let y=ROWS-1;y>=0;y--){
+  if(grid[y].every(v=>v)){
+   grid.splice(y,1);
+   grid.unshift(Array(COLS).fill(0));
+   score+=100;
+   y++;
+  }
+ }
+ updateScore();
+}
+function updateScore(){
+ document.getElementById("score").textContent=score;
 }
 
+/* =================== 绘制 =================== */
+function drawBlock(x,y,c){
+ ctx.fillStyle=c;
+ ctx.fillRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);
+ ctx.strokeStyle="#000";
+ ctx.strokeRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);
+}
 function draw(){
- ctx.clearRect(0,0,300,600);
- board.forEach((r,y)=>r.forEach((v,x)=>{
+ ctx.clearRect(0,0,cvs.width,cvs.height);
+ grid.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(x,y,COLORS[v])));
+ const s=SHAPES[cur.type][cur.rot];
+ s.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(cur.x+x,cur.y+y,COLORS[cur.type])));
+ drawNext();
+}
+function drawNext(){
+ nctx.clearRect(0,0,100,100);
+ const s=SHAPES[next.type][0];
+ const offX=(4-s[0].length)/2;
+ const offY=(4-s.length)/2;
+ s.forEach((r,y)=>r.forEach((v,x)=>{
   if(v){
-   ctx.fillStyle=COLORS[v];
-   ctx.fillRect(x*S,y*S,S,S);
-   ctx.strokeStyle="#0004";
-   ctx.strokeRect(x*S,y*S,S,S);
+   nctx.fillStyle=COLORS[next.type];
+   nctx.fillRect((x+offX)*20,(y+offY)*20,20,20);
+   nctx.strokeRect((x+offX)*20,(y+offY)*20,20,20);
   }
  }));
- ctx.fillStyle=COLORS[cur.k];
- cur.shape.forEach((r,y)=>r.forEach((v,x)=>{
-  if(v)ctx.fillRect((cur.x+x)*S,(cur.y+y)*S,S,S);
- }));
- nctx.clearRect(0,0,90,90);
- let sh=nextP.shape;
- let sc=Math.min(90/sh[0].length,90/sh.length);
- let ox=(90-sh[0].length*sc)/2,oy=(90-sh.length*sc)/2;
- sh.forEach((r,y)=>r.forEach((v,x)=>{
-  if(v){nctx.fillStyle=COLORS[nextP.k];nctx.fillRect(ox+x*sc,oy+y*sc,sc,sc);}
- }));
 }
 
+/* =================== 循环 =================== */
 function loop(t){
- if(state!=="play"){last=t;requestAnimationFrame(loop);return;}
- let d=t-last;last=t;timer+=d;
- if(timer>drop){
-  if(can(cur.x,cur.y+1,cur.shape))cur.y++;
+ if(!playing)return;
+ dropTimer+=16;
+ if(dropTimer>dropInterval){
+  dropTimer=0;
+  if(!collide(cur,0,1))cur.y++;
   else lock();
-  timer=0;
  }
- draw();requestAnimationFrame(loop);
+ draw();
+ requestAnimationFrame(loop);
 }
 
-/* ====== 输入 ====== */
-document.onkeydown=e=>{
- if(e.key==="ArrowLeft"&&can(cur.x-1,cur.y,cur.shape))cur.x--;
- if(e.key==="ArrowRight"&&can(cur.x+1,cur.y,cur.shape))cur.x++;
- if(e.key==="ArrowDown"&&can(cur.x,cur.y+1,cur.shape))cur.y++;
- if(e.key==="ArrowUp")rotate();
+/* =================== 启动 =================== */
+document.getElementById("start").onclick=()=>{
+ reset();
+ playing=true;
+ requestAnimationFrame(loop);
 };
-
-let sx,sy;
-canvas.ontouchstart=e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY};
-canvas.ontouchmove=e=>{
- e.preventDefault();
- let t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;
- if(dx>30&&can(cur.x+1,cur.y,cur.shape)){cur.x++;sx=t.clientX}
- if(dx<-30&&can(cur.x-1,cur.y,cur.shape)){cur.x--;sx=t.clientX}
- if(dy>30&&can(cur.x,cur.y+1,cur.shape)){cur.y++;sy=t.clientY}
- if(dy<-30){rotate();sy=t.clientY}
-};
-
-/* ====== 按钮 ====== */
-start.onclick=()=>{drop=+level.value;reset()};
-pause.onclick=()=>state=state==="play"?"pause":"play";
-
-loadRank();
-requestAnimationFrame(loop);
 </script>
-
 </body>
 </html>
