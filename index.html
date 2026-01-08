@@ -6,55 +6,19 @@
 <title>俄罗斯方块</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{
-  width:100%;height:100%;
-  background:#ffefc7;
-  font-family:sans-serif;
-  overflow:hidden;
-  user-select:none;
-  touch-action:none;
-}
+html,body{width:100%;height:100%;background:#ffefc7;font-family:sans-serif;overflow:hidden;user-select:none;touch-action:none}
 #app{display:flex;height:calc(100% - 44px)}
 #left{width:30%;padding:8px;display:flex;flex-direction:column;gap:8px}
 #right{width:70%;display:flex;justify-content:center;align-items:center;position:relative}
-.panel{
-  background:#ffe39a;
-  border-radius:14px;
-  padding:8px;
-  box-shadow:0 4px 8px rgba(0,0,0,.15)
-}
+.panel{background:#ffe39a;border-radius:14px;padding:8px;box-shadow:0 4px 8px rgba(0,0,0,.15)}
 h3{text-align:center;font-size:14px;margin-bottom:6px}
-#game{
-  width:100%;height:auto;max-height:100%;
-  background:#fff7e6;
-  border-radius:16px
-}
-#score{
-  position:absolute;
-  top:8px;
-  left:8px;
-  background:rgba(255,255,255,0.7);
-  padding:4px 8px;
-  border-radius:6px;
-  font-size:14px;
-  font-weight:bold;
-  z-index:10;
-}
-#hint{
-  height:44px;line-height:44px;
-  background:#ffe39a;
-  text-align:center;font-size:13px;
-  box-shadow:0 -2px 6px rgba(0,0,0,.2)
-}
-button,select{
-  width:100%;padding:6px;margin-top:4px;
-  border:none;border-radius:10px;
-  background:#ffd45c;font-size:14px
-}
+#game{width:100%;height:auto;max-height:100%;background:#fff7e6;border-radius:16px}
+#score{position:absolute;top:8px;left:8px;background:rgba(255,255,255,0.7);padding:4px 8px;border-radius:6px;font-size:14px;font-weight:bold;z-index:10}
+#hint{height:44px;line-height:44px;background:#ffe39a;text-align:center;font-size:13px;box-shadow:0 -2px 6px rgba(0,0,0,.2)}
+button,select{width:100%;padding:6px;margin-top:4px;border:none;border-radius:10px;background:#ffd45c;font-size:14px}
 </style>
 </head>
 <body>
-
 <div id="app">
   <div id="left">
     <div class="panel">
@@ -75,62 +39,48 @@ button,select{
       <button id="pause">暂停</button>
     </div>
   </div>
-
   <div id="right">
     <canvas id="game" width="300" height="600"></canvas>
     <div id="score">分数: 0</div>
   </div>
 </div>
-
-<div id="hint">
-向上：旋转，向左：左移，向右：右移，向下：下移
-</div>
+<div id="hint">向上：旋转，向左：左移，向右：右移，向下：下移</div>
 
 <script>
-/* ====== 修改这里：你的 Workers 地址 ====== */
 const API="https://fktop.wuyuping7262.workers.dev";
 
-/* ====== 基础 ====== */
 const COLS=10,ROWS=20,S=30;
 const canvas=game,ctx=canvas.getContext("2d");
 const nctx=next.getContext("2d");
 const scoreDisplay=document.getElementById("score");
 const COLORS={I:"#5ddcff",O:"#ffd966",T:"#d36bff",S:"#5cff8a",Z:"#ff6b6b",J:"#5c7cff",L:"#ffa94d"};
-const SHAPES={
- I:[[1,1,1,1]],O:[[1,1],[1,1]],
- T:[[0,1,0],[1,1,1]],
- S:[[0,1,1],[1,1,0]],
- Z:[[1,1,0],[0,1,1]],
- J:[[1,0,0],[1,1,1]],
- L:[[0,0,1],[1,1,1]]
-};
+const SHAPES={I:[[1,1,1,1]],O:[[1,1],[1,1]],T:[[0,1,0],[1,1,1]],S:[[0,1,1],[1,1,0]],Z:[[1,1,0],[0,1,1]],J:[[1,0,0],[1,1,1]],L:[[0,0,1],[1,1,1]]};
 
-let board,cur,nextP,bag=[],state="idle";
+let board,cur,nextP,bag=[],state="idle",gameOver=false;
 let score=0,drop=500,timer=0,last=0;
 
-/* ====== 排行榜 ====== */
+/* 排行榜 */
 async function loadRank(){
  try{
    const r=await fetch(API+"/score").then(r=>r.json());
    if(!r.length){rank.innerHTML="暂无记录";return;}
    rank.innerHTML=r.map((v,i)=>{
-     let lv = v.drop==300?"困难":v.drop==500?"普通":"简单";
+     let lv=v.drop==300?"困难":v.drop==500?"普通":"简单";
      return `#${i+1} ${v.score}（${lv}）`;
    }).join("<br>");
  }catch(e){
-   rank.innerHTML="加载失败";
-   console.error(e);
+   rank.innerHTML="加载失败"; console.error(e);
  }
 }
 async function submit(){
- if(state!=="over") return;
+ if(!gameOver) return;
  try{
    await fetch(API+"/score",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({score,drop})});
    loadRank();
  }catch(e){console.error("提交失败",e);}
 }
 
-/* ====== 游戏逻辑 ====== */
+/* 游戏逻辑 */
 const newBag=()=>bag=Object.keys(SHAPES).sort(()=>Math.random()-0.5);
 const nextPiece=()=>{if(!bag.length)newBag();let k=bag.pop();return{k,shape:SHAPES[k],x:3,y:0}};
 const can=(x,y,s)=>s.every((r,ry)=>r.every((v,rx)=>!v||(x+rx>=0&&x+rx<COLS&&y+ry<ROWS&&(y+ry<0||!board[y+ry][x+rx]))));
@@ -138,88 +88,57 @@ const can=(x,y,s)=>s.every((r,ry)=>r.every((v,rx)=>!v||(x+rx>=0&&x+rx<COLS&&y+ry
 function reset(){
  board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
  cur=nextPiece(); nextP=nextPiece();
- score=0; state="play";
+ score=0; state="play"; gameOver=false;
  updateScore();
 }
 
-function rotate(){
- if(state!=="play") return;
- const s=cur.shape;
- const r=s[0].map((_,i)=>s.map(row=>row[i]).reverse());
- if(can(cur.x,cur.y,r))cur.shape=r;
-}
+function rotate(){ if(state!=="play"||gameOver) return; const s=cur.shape; const r=s[0].map((_,i)=>s.map(row=>row[i]).reverse()); if(can(cur.x,cur.y,r))cur.shape=r; }
 
 function lock(){
- if(state==="over") return;
-
- cur.shape.forEach((r,y)=>r.forEach((v,x)=>{
-  if(v && cur.y+y>=0) board[cur.y+y][cur.x+x]=cur.k;
- }));
-
- // 消行
+ if(gameOver) return;
+ cur.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v && cur.y+y>=0) board[cur.y+y][cur.x+x]=cur.k;}));
  board=board.filter(r=>!r.every(v=>v));
  while(board.length<ROWS) board.unshift(Array(COLS).fill(0));
-
- score+=100;
- updateScore();
-
- // 下一个方块
- cur = nextP;
- nextP = nextPiece();
-
- if(!can(cur.x, cur.y, cur.shape)){
-   state="over";
+ score+=100; updateScore();
+ cur=nextP; nextP=nextPiece();
+ if(!can(cur.x,cur.y,cur.shape)){
+   gameOver=true; state="over";
    alert("游戏结束！");
    submit();
  }
 }
 
-function updateScore(){
- scoreDisplay.textContent="分数: "+score;
-}
-
+function updateScore(){scoreDisplay.textContent="分数: "+score;}
 function draw(){
  ctx.clearRect(0,0,300,600);
- board.forEach((r,y)=>r.forEach((v,x)=>{
-  if(v){ctx.fillStyle=COLORS[v];ctx.fillRect(x*S,y*S,S,S);ctx.strokeStyle="#0004";ctx.strokeRect(x*S,y*S,S,S);}
- }));
- if(state!=="over"){
-   ctx.fillStyle=COLORS[cur.k];
-   cur.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v)ctx.fillRect((cur.x+x)*S,(cur.y+y)*S,S,S);}));
- }
+ board.forEach((r,y)=>r.forEach((v,x)=>{if(v){ctx.fillStyle=COLORS[v];ctx.fillRect(x*S,y*S,S,S);ctx.strokeStyle="#0004";ctx.strokeRect(x*S,y*S,S,S);}}));
+ if(!gameOver){ctx.fillStyle=COLORS[cur.k]; cur.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v)ctx.fillRect((cur.x+x)*S,(cur.y+y)*S,S,S);}));}
  nctx.clearRect(0,0,90,90);
- let sh=nextP.shape;
- let sc=Math.min(90/sh[0].length,90/sh.length);
- let ox=(90-sh[0].length*sc)/2,oy=(90-sh.length*sc)/2;
+ let sh=nextP.shape,sc=Math.min(90/sh[0].length,90/sh.length),ox=(90-sh[0].length*sc)/2,oy=(90-sh.length*sc)/2;
  sh.forEach((r,y)=>r.forEach((v,x)=>{if(v){nctx.fillStyle=COLORS[nextP.k];nctx.fillRect(ox+x*sc,oy+y*sc,sc,sc);}}));
 }
 
 function loop(t){
- if(state!=="play"){last=t; requestAnimationFrame(loop); return;}
- let d=t-last; last=t; timer+=d;
- if(timer>drop){
-   if(can(cur.x, cur.y+1, cur.shape)) cur.y++;
-   else lock();
-   timer=0;
- }
- draw();
- requestAnimationFrame(loop);
+ if(state!=="play"||gameOver){last=t;requestAnimationFrame(loop);return;}
+ let d=t-last;last=t;timer+=d;
+ if(timer>drop){ if(can(cur.x,cur.y+1,cur.shape)) cur.y++; else lock(); timer=0; }
+ draw(); requestAnimationFrame(loop);
 }
 
-/* ====== 输入 ====== */
+/* 输入 */
 document.onkeydown=e=>{
- if(state!=="play") return;
+ if(gameOver || state!=="play") return;
  if(e.key==="ArrowLeft"&&can(cur.x-1,cur.y,cur.shape))cur.x--;
  if(e.key==="ArrowRight"&&can(cur.x+1,cur.y,cur.shape))cur.x++;
  if(e.key==="ArrowDown"&&can(cur.x,cur.y+1,cur.shape))cur.y++;
- if(e.key==="ArrowUp")rotate();
+ if(e.key==="ArrowUp") rotate();
 };
 
 let sx,sy;
 canvas.ontouchstart=e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY};
 canvas.ontouchmove=e=>{
  e.preventDefault();
- if(state!=="play") return;
+ if(gameOver || state!=="play") return;
  let t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;
  if(dx>30&&can(cur.x+1,cur.y,cur.shape)){cur.x++;sx=t.clientX}
  if(dx<-30&&can(cur.x-1,cur.y,cur.shape)){cur.x--;sx=t.clientX}
@@ -227,9 +146,9 @@ canvas.ontouchmove=e=>{
  if(dy<-30){rotate();sy=t.clientY}
 };
 
-/* ====== 按钮 ====== */
+/* 按钮 */
 start.onclick=()=>{drop=+level.value;reset()};
-pause.onclick=()=>{state=state==="play"?"pause":"play";};
+pause.onclick=()=>{if(gameOver) return; state=state==="play"?"pause":"play";};
 
 loadRank();
 requestAnimationFrame(loop);
