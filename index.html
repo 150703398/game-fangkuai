@@ -6,16 +6,15 @@
 <title>俄罗斯方块</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;width:100%;font-family:sans-serif;background:#ffebcc;color:#222;user-select:none;touch-action:none;overflow:hidden;}
+html,body{height:100%;width:100%;font-family:sans-serif;background:#ffebcc;color:#222;user-select:none;overflow:hidden;}
 #main{display:flex;height:100%;width:100%;}
-#left{width:30%;padding:8px;display:flex;flex-direction:column;gap:8px;}
-.panel{background:#ffe4a3;border-radius:12px;padding:8px;flex-shrink:0;box-shadow:0 0 8px rgba(0,0,0,0.2);}
+#left{width:30%;display:flex;flex-direction:column;padding:5px;gap:5px;}
+.panel{background:#ffe4a3;border-radius:12px;padding:5px;flex-shrink:0;box-shadow:0 0 8px rgba(0,0,0,0.2);}
 h3{margin:4px 0;font-size:14px;text-align:center;color:#333;}
-#gameWrap{width:70%;height:100%;display:flex;justify-content:center;align-items:center;}
+#gameWrap{width:70%;height:100%;display:flex;justify-content:center;align-items:center;position:relative;}
 canvas{background:#fff8e7;border-radius:12px;display:block;width:100%;height:auto;}
 #level,button{width:100%;padding:6px;margin:3px 0;border-radius:8px;border:none;font-size:14px;background:#ffd966;color:#333;cursor:pointer;}
-#level option{background:#fff;}
-#instructions{margin-top:8px;font-size:12px;text-align:center;line-height:1.4;color:#333;}
+#instructions{font-size:12px;text-align:center;line-height:1.4;color:#333;padding:2px;position:absolute;bottom:0;width:100%;}
 </style>
 </head>
 <body>
@@ -31,18 +30,16 @@ canvas{background:#fff8e7;border-radius:12px;display:block;width:100%;height:aut
       </select>
       <button id="start">开始</button>
       <button id="pause">暂停</button>
-      <div id="instructions">
-操作说明：向上：旋转，向左：左移，向右：右移，向下：下移。
-      </div>
     </div>
   </div>
   <div id="gameWrap">
     <canvas id="game" width="300" height="600"></canvas>
+    <div id="instructions">操作说明：向上：旋转，向左：左移，向右：右移，向下：下移。</div>
   </div>
 </div>
 
 <script>
-// ==================== 参数 ====================
+// ========= 参数 =========
 const COLS=10,ROWS=20,BLOCK=30;
 const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
 const nextC=document.getElementById("next"),nctx=nextC.getContext("2d");
@@ -50,11 +47,11 @@ let board=[],cur,next,bag=[],state="idle",score=0,combo=0,dropInterval=500,dropT
 const SHAPES={I:[[1,1,1,1]],O:[[1,1],[1,1]],T:[[0,1,0],[1,1,1]],S:[[0,1,1],[1,1,0]],Z:[[1,1,0],[0,1,1]],J:[[1,0,0],[1,1,1]],L:[[0,0,1],[1,1,1]]};
 const COLORS={I:"#4df",O:"#ffd700",T:"#d5f",S:"#4f4",Z:"#f44",J:"#44f",L:"#fa4"};
 
-// ==================== 7-Bag ====================
+// ========= 7-Bag =========
 function newBag(){ bag=Object.keys(SHAPES).sort(()=>Math.random()-0.5);}
 function getNext(){ if(!bag.length)newBag(); const k=bag.pop(); return {k,shape:SHAPES[k],x:3,y:0,rot:0};}
 
-// ==================== 初始化 ====================
+// ========= 初始化 =========
 function reset(){
  board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
  score=0;combo=0;
@@ -65,7 +62,7 @@ function reset(){
  updateRank();
 }
 
-// ==================== 碰撞检测 ====================
+// ========= 碰撞 =========
 function canMove(x,y,shape){
  for(let r=0;r<shape.length;r++)
   for(let c=0;c<shape[r].length;c++)
@@ -77,18 +74,9 @@ function canMove(x,y,shape){
  return true;
 }
 
-// ==================== SRS Wall Kick ====================
-const WALL_KICKS={
- I:[[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
-    [[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
-    [[0,0],[-1,0],[2,0],[-1,2],[2,-1]],
-    [[0,0],[1,0],[-2,0],[1,-2],[-2,1]]],
- JLSTZ:[[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
-        [[0,0],[1,0],[1,-1],[0,2],[1,2]],
-        [[0,0],[1,0],[1,1],[0,-2],[1,-2]],
-        [[0,0],[-1,0],[-1,-1],[0,2],[-1,2]]]
-};
-
+// ========= SRS旋转 =========
+const WALL_KICKS={I:[[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],[[0,0],[-1,0],[2,0],[-1,2],[2,-1]],[[0,0],[1,0],[-2,0],[1,-2],[-2,1]]],
+JLSTZ:[[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],[[0,0],[1,0],[1,-1],[0,2],[1,2]],[[0,0],[1,0],[1,1],[0,-2],[1,-2]],[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]]]};
 function rotate(){
  const oldShape=cur.shape;
  const r=oldShape[0].map((_,i)=>oldShape.map(row=>row[i]).reverse());
@@ -102,7 +90,7 @@ function rotate(){
  }
 }
 
-// ==================== T-Spin 判定 ====================
+// ========= T-Spin =========
 let tSpin=false;
 function checkTSpin(){
  if(cur.k!=="T") { tSpin=false; return; }
@@ -114,7 +102,7 @@ function checkTSpin(){
  tSpin=(count>=3);
 }
 
-// ==================== 主循环 ====================
+// ========= 主循环 =========
 let inputState={left:false,right:false,down:false,up:false};
 let DAS_L=0,ARR_L=0,DAS_R=0,ARR_R=0;
 const DAS=170,ARR=50;
@@ -137,7 +125,7 @@ function loop(t){
  requestAnimationFrame(loop);
 }
 
-// ==================== 锁定 ====================
+// ========= 锁定 =========
 function lock(){
  cur.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v && cur.y+y>=0) board[cur.y+y][cur.x+x]=cur.k;}));
  clearLines();
@@ -145,7 +133,7 @@ function lock(){
  if(!canMove(cur.x,cur.y,cur.shape)) state="gameover";
 }
 
-// ==================== 消行 ====================
+// ========= 消行 =========
 function clearLines(){
  let lines=0;
  board=board.filter(r=>{if(r.every(v=>v)){lines++;return false;} return true;});
@@ -154,7 +142,7 @@ function clearLines(){
  updateRank();
 }
 
-// ==================== 绘制 ====================
+// ========= 绘制 =========
 function draw(){
  ctx.clearRect(0,0,canvas.width,canvas.height);
  board.forEach((r,y)=>r.forEach((v,x)=>{if(v){ctx.fillStyle=COLORS[v];ctx.fillRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);}}));
@@ -162,8 +150,6 @@ function draw(){
 }
 function drawPiece(p){ctx.fillStyle=COLORS[p.k];p.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v)ctx.fillRect((p.x+x)*BLOCK,(p.y+y)*BLOCK,BLOCK,BLOCK);}))}
 function drawGhost(){let y=cur.y;while(canMove(cur.x,y+1,cur.shape))y++;ctx.globalAlpha=0.3;drawPiece({...cur,y});ctx.globalAlpha=1;}
-
-// ==================== 下一个方块预览 ====================
 function drawNext(){
     nctx.clearRect(0,0,nextC.width,nextC.height);
     const shape = next.shape;
@@ -174,25 +160,22 @@ function drawNext(){
     const offsetY = (nextC.height - rows*scale)/2;
     shape.forEach((r,y)=>{
         r.forEach((v,x)=>{
-            if(v){
-                nctx.fillStyle = COLORS[next.k];
-                nctx.fillRect(offsetX + x*scale, offsetY + y*scale, scale, scale);
-            }
+            if(v){nctx.fillStyle = COLORS[next.k];nctx.fillRect(offsetX + x*scale, offsetY + y*scale, scale, scale);}
         })
     })
 }
 
-// ==================== 移动 ====================
+// ========= 移动 =========
 function move(dx){if(canMove(cur.x+dx,cur.y,cur.shape)){cur.x+=dx;lockTimer=0;}}
 
-// ==================== 软下落 ====================
+// ========= 软下落 =========
 function softDrop(){if(canMove(cur.x,cur.y+1,cur.shape)){cur.y++;score++;}}
 
-// ==================== 按钮 ====================
+// ========= 按钮 =========
 document.getElementById("start").onclick=()=>{dropInterval=+document.getElementById("level").value;reset();}
 document.getElementById("pause").onclick=()=>{state=state==="playing"?"paused":"playing";}
 
-// ==================== 键盘输入 ====================
+// ========= 键盘输入 =========
 document.addEventListener("keydown",e=>{
  e.preventDefault();
  if(e.key==="ArrowLeft") inputState.left=true;
@@ -207,13 +190,12 @@ document.addEventListener("keyup",e=>{
  if(e.key==="ArrowUp") inputState.up=false;
 });
 
-// ==================== 手机滑动移动 ====================
-let touchStartX=0,touchStartY=0,touchHoldDir=null,holdTimer=0,holdARRTimer=0,touchDxAccum=0;
-const TOUCH_BLOCK=BLOCK;
+// ========= 手机滑动微调 + 长按 =========
+let touchStartX=0,touchStartY=0,touchDxAccum=0,touchDyAccum=0,touchHoldDir=null,holdTimer=0,holdARRTimer=0;
 canvas.addEventListener("touchstart",e=>{
  const t=e.touches[0];
  touchStartX=t.clientX; touchStartY=t.clientY;
- touchDxAccum=0; touchHoldDir=null; holdTimer=0; holdARRTimer=0;
+ touchDxAccum=0; touchDyAccum=0; touchHoldDir=null; holdTimer=0; holdARRTimer=0;
 },{passive:false});
 
 canvas.addEventListener("touchmove",e=>{
@@ -221,21 +203,21 @@ canvas.addEventListener("touchmove",e=>{
  const t=e.touches[0];
  const dx=t.clientX-touchStartX;
  const dy=t.clientY-touchStartY;
-
- // 横向微调
  touchDxAccum+=dx;
- while(touchDxAccum>=TOUCH_BLOCK){move(1); touchDxAccum-=TOUCH_BLOCK; touchHoldDir="right"; holdTimer=DAS; holdARRTimer=ARR;}
- while(touchDxAccum<=-TOUCH_BLOCK){move(-1); touchDxAccum+=TOUCH_BLOCK; touchHoldDir="left"; holdTimer=DAS; holdARRTimer=ARR;}
+ touchDyAccum+=dy;
+
+ // 横向微调（每格移动一次）
+ while(touchDxAccum>=BLOCK){move(1); touchDxAccum-=BLOCK; touchHoldDir="right"; holdTimer=DAS; holdARRTimer=ARR;}
+ while(touchDxAccum<=-BLOCK){move(-1); touchDxAccum+=BLOCK; touchHoldDir="left"; holdTimer=DAS; holdARRTimer=ARR;}
  touchStartX=t.clientX;
 
  // 纵向滑动
- if(dy<-TOUCH_BLOCK){rotate(); touchStartY=t.clientY;}
- if(dy>TOUCH_BLOCK){softDrop(); touchStartY=t.clientY;}
+ if(touchDyAccum<-BLOCK){inputState.up=true; touchDyAccum=0;}
+ if(touchDyAccum>BLOCK){softDrop(); touchDyAccum=0; touchStartY=t.clientY;}
 },{passive:false});
 
 canvas.addEventListener("touchend",e=>{
- touchHoldDir=null; holdTimer=0; holdARRTimer=0;
- inputState.down=false; inputState.up=false;
+ touchHoldDir=null; holdTimer=0; holdARRTimer=0; inputState.up=false;
 },{passive:false});
 
 function touchLoop(dt){
@@ -253,10 +235,10 @@ function touchLoop(dt){
 }
 requestAnimationFrame(touchLoop);
 
-// ==================== 排行榜 ====================
+// ========= 排行榜 =========
 function updateRank(){document.getElementById("rank").innerText="分数:"+score+"  连击:"+combo+(tSpin?"  T-Spin":"");}
 
-// ==================== 循环 ====================
+// ========= 循环 =========
 requestAnimationFrame(function loopStart(t){lastTime=t;loop(t);});
 </script>
 </body>
