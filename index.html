@@ -72,10 +72,15 @@ async function loadRank(){
    rank.innerHTML="加载失败"; console.error(e);
  }
 }
-async function submit(){
+
+async function submitScore(){
  if(!gameOver) return;
  try{
-   const res=await fetch(API+"/score",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({score,drop})});
+   const res=await fetch(API+"/score",{
+     method:"POST",
+     headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({score,drop})
+   });
    const data=await res.json();
    console.log("提交结果:",data);
    await loadRank();
@@ -108,7 +113,7 @@ function lock(){
  if(!can(cur.x,cur.y,cur.shape)){
    gameOver=true; state="over";
    alert("游戏结束！");
-   submit();
+   submitScore();
  }
 }
 
@@ -138,8 +143,9 @@ document.onkeydown=e=>{
  if(e.key==="ArrowUp") rotate();
 };
 
+/* 触屏滑动 */
 let sx,sy;
-canvas.ontouchstart=e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY};
+canvas.ontouchstart=e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;};
 canvas.ontouchmove=e=>{
  e.preventDefault();
  if(gameOver || state!=="play") return;
