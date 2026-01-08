@@ -50,11 +50,12 @@ button,select{width:100%;padding:6px;margin-top:4px;border:none;border-radius:10
 <div id="hint">向上：旋转，向左：左移，向右：右移，向下：下移</div>
 
 <script>
-const API="https://fktop.wuyuping7262.workers.dev/score";
+const API="https://fktop.wuyuping7262.workers.dev";
 const COLS=10,ROWS=20,S=30;
 const canvas=game,ctx=canvas.getContext("2d");
 const nctx=next.getContext("2d");
 const scoreDisplay=document.getElementById("score");
+const rank=document.getElementById("rank");
 const COLORS={I:"#5ddcff",O:"#ffd966",T:"#d36bff",S:"#5cff8a",Z:"#ff6b6b",J:"#5c7cff",L:"#ffa94d"};
 const SHAPES={I:[[1,1,1,1]],O:[[1,1],[1,1]],T:[[0,1,0],[1,1,1]],S:[[0,1,1],[1,1,0]],Z:[[1,1,0],[0,1,1]],J:[[1,0,0],[1,1,1]],L:[[0,0,1],[1,1,1]]};
 
@@ -66,7 +67,7 @@ async function loadRank(){
  try{
    const r=await fetch(API).then(r=>r.json());
    let display=[];
-   if(r.length){display=r.slice(0,10);} 
+   if(r.length){display=r.slice(0,10);}
    else {
      const local=JSON.parse(localStorage.getItem("tetris_rank")||"[]");
      display=local.slice(0,10);
@@ -88,7 +89,6 @@ async function submitScore(){
      body:JSON.stringify({score,drop})
    });
    const data=await res.json();
-   console.log("提交结果:",data);
    let local=JSON.parse(localStorage.getItem("tetris_rank")||"[]");
    local.push({score,drop});
    localStorage.setItem("tetris_rank",JSON.stringify(local));
