@@ -73,7 +73,7 @@ button,select{
 </div>
 
 <div id="hint">
-操作说明：向上：旋转，向左：左移，向右：右移，向下：下移
+向上：旋转，向左：左移，向右：右移，向下：下移
 </div>
 
 <script>
@@ -100,10 +100,13 @@ let score=0,drop=500,timer=0,last=0;
 /* ====== 排行榜 ====== */
 async function loadRank(){
  const r=await fetch(API+"/score").then(r=>r.json());
- rank.innerHTML=r.map((v,i)=>`#${i+1} ${v.score}`).join("<br>");
+ rank.innerHTML=r.map((v,i)=>{
+   let lv = v.drop==300?"困难":v.drop==500?"普通":"简单";
+   return `#${i+1} ${v.score}（${lv}）`;
+ }).join("<br>");
 }
 async function submit(){
- await fetch(API+"/score",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({score})});
+ await fetch(API+"/score",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({score,drop})});
  loadRank();
 }
 
