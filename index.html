@@ -99,15 +99,24 @@ let score=0,drop=500,timer=0,last=0;
 
 /* ====== 排行榜 ====== */
 async function loadRank(){
- const r=await fetch(API+"/score").then(r=>r.json());
- rank.innerHTML=r.map((v,i)=>{
-   let lv = v.drop==300?"困难":v.drop==500?"普通":"简单";
-   return `#${i+1} ${v.score}（${lv}）`;
- }).join("<br>");
+ try{
+   const r=await fetch(API+"/score").then(r=>r.json());
+   rank.innerHTML=r.map((v,i)=>{
+     let lv = v.drop==300?"困难":v.drop==500?"普通":"简单";
+     return `#${i+1} ${v.score}（${lv}）`;
+   }).join("<br>");
+ }catch(e){
+   rank.innerHTML="加载失败";
+   console.error(e);
+ }
 }
 async function submit(){
- await fetch(API+"/score",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({score,drop})});
- loadRank();
+ try{
+   await fetch(API+"/score",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({score,drop})});
+   loadRank();
+ }catch(e){
+   console.error("提交失败",e);
+ }
 }
 
 /* ====== 游戏逻辑 ====== */
