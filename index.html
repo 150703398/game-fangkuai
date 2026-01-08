@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>卡通职业竞技俄罗斯方块</title>
+<title>俄罗斯方块</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;width:100%;font-family:sans-serif;background:#ffebcc;color:#222;user-select:none;touch-action:none;overflow:hidden;}
@@ -40,7 +40,7 @@ canvas{background:#fff8e7;border-radius:12px;display:block;width:100%;height:aut
   </div>
 </div>
 <div id="instructions">
-操作说明：PC键盘：← → 移动，↓软下落，上旋转 | 手机滑动：左右滑动→移动，上滑→旋转，下滑→软下落
+操作说明：PC键盘：← → 移动，↓软下落，上旋转 | 手机滑动：左右滑动→移动（支持连续），上滑→旋转，下滑→软下落
 </div>
 
 <script>
@@ -125,7 +125,7 @@ function loop(t){
  let dt=t-lastTime;lastTime=t;
  dropTimer+=dt;
 
- // 左右移动
+ // 左右移动 DAS/ARR
  if(inputState.left){ DAS_L+=dt; if(DAS_L>=DAS){ARR_L+=dt; while(ARR_L>=ARR){move(-1);ARR_L-=ARR;}} }else{DAS_L=0;ARR_L=0;}
  if(inputState.right){ DAS_R+=dt; if(DAS_R>=DAS){ARR_R+=dt; while(ARR_R>=ARR){move(1);ARR_R-=ARR;}} }else{DAS_R=0;ARR_R=0;}
  // 下落
@@ -212,26 +212,50 @@ document.addEventListener("keyup",e=>{
  if(e.key==="ArrowUp") inputState.up=false;
 });
 
-// ==================== Canvas 内滑动 ====================
-let startX=0,startY=0;
+// ==================== Canvas 内滑动 DAS/ARR ====================
+let startX=0,startY=0,holdDir=null;
+let holdTimer=0,holdARRTimer=0;
 canvas.addEventListener("touchstart",e=>{
- const t=e.touches[0];
- startX=t.clientX; startY=t.clientY;
+ const t=e.touches[0]; startX=t.clientX; startY=t.clientY;
+ holdDir=null; holdTimer=0; holdARRTimer=0;
 },{passive:false});
+
 canvas.addEventListener("touchmove",e=>{
  e.preventDefault();
  const t=e.touches[0];
- let dx=t.clientX-startX,dy=t.clientY-startY;
- // 左右移动
- if(Math.abs(dx)>BLOCK){dx>0?move(1):move(-1);startX=t.clientX;}
+ let dx=t.clientX-startX, dy=t.clientY-startY;
+
+ // 左右滑动 DAS/ARR
+ if(Math.abs(dx)>BLOCK){
+   holdDir = dx>0 ? "right":"left";
+   startX = t.clientX;
+   holdTimer = DAS; holdARRTimer = ARR; // 立即触发一次
+   if(holdDir==="left") move(-1); else move(1);
+ }
+
  // 上滑旋转
- if(dy<-BLOCK){rotate();startY=t.clientY;}
+ if(dy<-BLOCK){rotate(); startY=t.clientY;}
  // 下滑软下落
- if(dy>BLOCK){softDrop();startY=t.clientY;}
+ if(dy>BLOCK){softDrop(); startY=t.clientY;}
 },{passive:false});
+
 canvas.addEventListener("touchend",e=>{
- inputState.left=false; inputState.right=false; inputState.down=false; inputState.up=false;
+ holdDir=null; holdTimer=0; holdARRTimer=0;
+ inputState.down=false; inputState.up=false;
 },{passive:false});
+
+// 连续移动循环
+function touchLoop(dt){
+ if(holdDir){
+   holdTimer += dt;
+   holdARRTimer += dt;
+   if(holdTimer>=DAS){
+     while(holdARRTimer>=ARR){if(holdDir==="left") move(-1); else move(1); holdARRTimer-=ARR;}
+   }
+ }
+ requestAnimationFrame(touchLoop);
+}
+requestAnimationFrame(touchLoop);
 
 // ==================== 排行榜 ====================
 function updateRank(){document.getElementById("rank").innerText="分数:"+score+"  连击:"+combo+(tSpin?"  T-Spin":"");}
