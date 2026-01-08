@@ -32,7 +32,7 @@ canvas{background:#fff8e7;border-radius:12px;display:block;width:100%;height:aut
       <button id="start">开始</button>
       <button id="pause">暂停</button>
       <div id="instructions">
-操作说明：PC键盘：← → 移动，↓软下落，上旋转 | 手机滑动：左右滑动→移动（支持连续），上滑→旋转，下滑→软下落
+操作说明：PC键盘：← → 移动，↓软下落，上旋转 | 手机滑动：左右滑动→移动一格，长按连续移动，上滑→旋转，下滑→软下落
       </div>
     </div>
   </div>
@@ -207,27 +207,38 @@ document.addEventListener("keyup",e=>{
  if(e.key==="ArrowUp") inputState.up=false;
 });
 
-// ==================== 手机滑动 DAS/ARR ====================
+// ==================== 手机滑动移动（精确格 + 长按 DAS/ARR） ====================
 let startX=0,startY=0,holdDir=null,holdTimer=0,holdARRTimer=0;
+const SWIPE_THRESHOLD=BLOCK/2;
+
 canvas.addEventListener("touchstart",e=>{
- const t=e.touches[0]; startX=t.clientX; startY=t.clientY;
+ const t=e.touches[0];
+ startX=t.clientX; startY=t.clientY;
  holdDir=null; holdTimer=0; holdARRTimer=0;
 },{passive:false});
+
 canvas.addEventListener("touchmove",e=>{
  e.preventDefault();
  const t=e.touches[0];
- let dx=t.clientX-startX, dy=t.clientY-startY;
+ const dx=t.clientX-startX;
+ const dy=t.clientY-startY;
 
- if(Math.abs(dx)>BLOCK){
-   holdDir = dx>0 ? "right":"left";
-   startX=t.clientX;
+ // 左右移动格子逻辑
+ if(Math.abs(dx)>=SWIPE_THRESHOLD){
+   let moveCells = Math.floor(Math.abs(dx)/SWIPE_THRESHOLD);
+   let dir = dx>0?1:-1;
+   for(let i=0;i<moveCells;i++) move(dir);
+   startX += moveCells*SWIPE_THRESHOLD*dir;
+   holdDir = dir>0?"right":"left";
    holdTimer=DAS; holdARRTimer=ARR;
-   if(holdDir==="left") move(-1); else move(1);
  }
 
- if(dy<-BLOCK){rotate(); startY=t.clientY;}
- if(dy>BLOCK){softDrop(); startY=t.clientY;}
+ // 上滑旋转
+ if(dy<-SWIPE_THRESHOLD){rotate(); startY=t.clientY;}
+ // 下滑软下落
+ if(dy>SWIPE_THRESHOLD){softDrop(); startY=t.clientY;}
 },{passive:false});
+
 canvas.addEventListener("touchend",e=>{
  holdDir=null; holdTimer=0; holdARRTimer=0;
  inputState.down=false; inputState.up=false;
